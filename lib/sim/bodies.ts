@@ -38,6 +38,10 @@ export class BodyBuffer {
   readonly colG: Float32Array;
   readonly colB: Float32Array;
 
+  // clear()가 이 값을 되돌리지 않는다는 것이 지켜야 할 불변식이다: 리셋 이후 스폰되는
+  // 천체도 항상 새 id를 받는다. 이게 없으면 Trails의 슬롯 id나 오래된 selectedId가
+  // 리셋 후 우연히 같은 숫자를 재사용하는 '다른' 천체에 조용히 다시 엮여 버린다.
+  // "정리"랍시고 나중에 여기를 0/1로 되돌리면 바로 이 버그가 재발한다.
   private nextId = 1;
 
   constructor(capacity: number = MAX_BODIES) {
