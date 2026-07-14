@@ -68,6 +68,16 @@ export function integrate(b: BodyBuffer, dt: number): void {
   const half = dt * 0.5;
 
   for (let i = 0; i < n; i++) {
+    // 고정된 천체는 움직이지 않는다. 가속도는 계산되지만(다른 천체를 끌어당기는 쪽은
+    // 그대로 유효하다) 자신에게는 적용하지 않고, 속도도 0으로 눌러 둔다 — 고정을 풀었을 때
+    // 그동안 쌓인 가속도로 갑자기 튀어나가지 않게 하기 위해서다.
+    if (b.pinned[i]) {
+      b.velX[i] = 0;
+      b.velY[i] = 0;
+      b.velZ[i] = 0;
+      continue;
+    }
+
     b.velX[i] += b.accX[i] * half;
     b.velY[i] += b.accY[i] * half;
     b.velZ[i] += b.accZ[i] * half;
@@ -80,6 +90,8 @@ export function integrate(b: BodyBuffer, dt: number): void {
   computeAccelerations(b);
 
   for (let i = 0; i < n; i++) {
+    if (b.pinned[i]) continue;
+
     b.velX[i] += b.accX[i] * half;
     b.velY[i] += b.accY[i] * half;
     b.velZ[i] += b.accZ[i] * half;

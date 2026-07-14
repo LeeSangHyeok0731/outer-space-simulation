@@ -155,7 +155,17 @@
 - 좌상단: 천체 수 / 경과 시간 / FPS
 - 하단 중앙: 재생·일시정지 · 배속(0.25×~16×) · 리셋
 - 우측: 스폰 질량 프리셋(소행성·행성·항성) + 미세 조정 슬라이더, **무리 소환**, 궤적 토글
-- 선택 시: 천체 정보 카드
+- 선택 시: 천체 정보 카드 (질량·반지름·속력 + **위치 고정 토글**)
+
+### 위치 고정 (2026-07-14 추가)
+
+선택한 천체를 제자리에 못박는다. `BodyBuffer`에 `pinned` 플래그를 두고, **적분기가 그 천체의 위치·속도 갱신만 건너뛴다.** 중력은 그대로 내뿜으므로 다른 천체들을 붙들어 두는 '닻'이 된다 — 항성을 고정해두면 뭘 던져 넣어도 안 밀린다.
+
+- **고정이 이긴다.** 고정된 천체에 다른 천체가 부딪혀 병합되면, 합쳐진 천체는 닻 위치에 그대로 머물고 속도 0으로 계속 고정 상태다. 질량만 불어난다. 이때만 **운동량 보존을 적용하지 않는다** — 닻이 소행성 하나에 밀려나면 기능 자체가 무의미해지기 때문이다. 둘 다 고정이면 무거운 쪽의 닻 위치를 남긴다.
+- 고정된 동안 **속도를 매 스텝 0으로 눌러 둔다.** 이래야 고정을 풀었을 때 그동안 쌓인 가속도로 갑자기 튀어나가지 않고 그 자리에서 자연스럽게 낙하하기 시작한다.
+- 가속도는 위치와 질량으로만 계산되므로 고정 상태를 바꿔도 `accDirty`를 세울 필요가 없다.
+- 화면에서는 `components/scene/PinMarkers.tsx`가 고정된 천체 주위에 호박색 고리를 그린다. 512개 전부가 고정될 수 있으므로 단일 `LineSegments`에 담아 draw call 1회로 처리한다.
+- `serialize()`/`load()`가 고정 상태를 실어 나른다 (3단계 세이브/로드 대비).
 
 ### 무리 소환 (2026-07-14 추가)
 
@@ -196,7 +206,7 @@ lib/sim/            엔진 (React·three 모름, 테스트 대상)
   predict.ts        던지기 궤적 미리보기
   *.test.ts         물리 테스트
 components/scene/   Canvas 내부 (엔진을 읽어 그리기만)
-  SpaceCanvas.tsx · Bodies.tsx · Trails.tsx · Starfield.tsx
+  SpaceCanvas.tsx · Bodies.tsx · Trails.tsx · Starfield.tsx · PinMarkers.tsx
   SpawnController.tsx · CameraRig.tsx
 components/ui/      DOM 오버레이 (Tailwind)
   Overlay.tsx · ControlPanel.tsx · SpawnPanel.tsx · StatsHud.tsx · BodyCard.tsx

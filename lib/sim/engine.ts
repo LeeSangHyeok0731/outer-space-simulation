@@ -77,6 +77,32 @@ export class SimulationEngine {
     this.accDirty = true;
   }
 
+  /**
+   * 천체를 제자리에 고정하거나 푼다. 고정된 천체는 중력을 그대로 내뿜지만 스스로는
+   * 움직이지 않는다 — 다른 천체들을 붙들어 두는 '닻'이 된다.
+   *
+   * 고정을 풀 때 속도가 0인 채로 풀리므로(적분기가 매 스텝 눌러 둔다) 그동안 쌓인
+   * 가속도로 갑자기 튀어나가지 않는다. 그 자리에서 자연스럽게 낙하하기 시작한다.
+   *
+   * 가속도는 위치와 질량으로만 계산되므로 accDirty를 세울 필요가 없다.
+   */
+  setPinned(id: number, pinned: boolean): void {
+    const i = this.bodies.indexOfId(id);
+    if (i === -1) return;
+    this.bodies.pinned[i] = pinned ? 1 : 0;
+    if (pinned) {
+      this.bodies.velX[i] = 0;
+      this.bodies.velY[i] = 0;
+      this.bodies.velZ[i] = 0;
+    }
+  }
+
+  /** 천체가 고정돼 있는가. 없는 id면 false. */
+  isPinned(id: number): boolean {
+    const i = this.bodies.indexOfId(id);
+    return i !== -1 && this.bodies.pinned[i] === 1;
+  }
+
   /** 4단계(우주선 추력)용. 추력 F를 dt 동안 준 효과는 dv = F/m·dt 다. */
   applyImpulse(id: number, dvx: number, dvy: number, dvz: number): void {
     const i = this.bodies.indexOfId(id);
@@ -182,6 +208,7 @@ export class SimulationEngine {
         radius: b.radius[i],
         type: b.type[i],
         color: [b.colR[i], b.colG[i], b.colB[i]],
+        pinned: b.pinned[i] === 1,
       });
     }
     return { simTime: this.simTime, bodies };

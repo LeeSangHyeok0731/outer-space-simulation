@@ -65,3 +65,48 @@ describe('integrate (립프로그)', () => {
     expect(b.posX[0]).toBeCloseTo(2, 6);
   });
 });
+
+describe('고정된 천체 (pinned)', () => {
+  it('중력을 받아도 움직이지 않는다', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 1000, radius: 1, pinned: true });
+    b.add({ x: 50, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 10, radius: 1 });
+    computeAccelerations(b);
+
+    for (let s = 0; s < 500; s++) integrate(b, 1 / 120);
+
+    expect(b.posX[0]).toBe(0);
+    expect(b.posY[0]).toBe(0);
+    expect(b.posZ[0]).toBe(0);
+    expect(b.velX[0]).toBe(0);
+  });
+
+  it('고정돼 있어도 다른 천체는 그대로 끌어당긴다', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 1000, radius: 1, pinned: true });
+    b.add({ x: 50, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 10, radius: 1 });
+    computeAccelerations(b);
+
+    for (let s = 0; s < 500; s++) integrate(b, 1 / 120);
+
+    expect(b.posX[1]).toBeLessThan(50); // 고정된 천체 쪽으로 끌려왔다
+    expect(b.velX[1]).toBeLessThan(0);
+  });
+
+  it('고정을 풀면 속도 0에서 자연스럽게 낙하한다 (쌓인 가속도로 튀어나가지 않는다)', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 1000, radius: 1 });
+    b.add({ x: 50, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 10, radius: 1, pinned: true });
+    computeAccelerations(b);
+
+    for (let s = 0; s < 500; s++) integrate(b, 1 / 120);
+    expect(b.velX[1]).toBe(0);
+
+    b.pinned[1] = 0; // 고정 해제
+    integrate(b, 1 / 120);
+
+    // 한 스텝 만에 광속으로 튀지 않고, 중심 쪽(-x)으로 아주 조금 움직이기 시작한다.
+    expect(b.velX[1]).toBeLessThan(0);
+    expect(Math.abs(b.velX[1])).toBeLessThan(1);
+  });
+});

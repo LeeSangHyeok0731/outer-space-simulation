@@ -43,7 +43,8 @@ describe('BodyBuffer', () => {
       vx: 44, vy: 55, vz: 66,
       mass: 77, radius: 88,
       type: 5,
-      color: [0.1, 0.2, 0.3]
+      color: [0.1, 0.2, 0.3],
+      pinned: true
     }));
     b.accX[1] = 99;
     b.accY[1] = 111;
@@ -65,6 +66,7 @@ describe('BodyBuffer', () => {
     expect(b.colR[0]).toBeCloseTo(0.1);
     expect(b.colG[0]).toBeCloseTo(0.2);
     expect(b.colB[0]).toBeCloseTo(0.3);
+    expect(b.pinned[0]).toBe(1);
   });
 
   it('indexOfId는 swap-remove 후에도 올바른 위치를 찾는다', () => {

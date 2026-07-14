@@ -4,6 +4,7 @@ import { Canvas } from '@react-three/fiber';
 import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import Bodies from './Bodies';
 import CameraRig from './CameraRig';
+import PinMarkers from './PinMarkers';
 import SpawnController from './SpawnController';
 import Starfield from './Starfield';
 import Trails from './Trails';
@@ -25,6 +26,7 @@ export default function SpaceCanvas() {
           뒤에 마운트해야 한다. */}
       <Bodies />
       <Trails />
+      <PinMarkers />
       <CameraRig />
       <SpawnController />
       <EffectComposer>

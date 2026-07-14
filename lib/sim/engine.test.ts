@@ -113,3 +113,47 @@ describe('SimulationEngine', () => {
     expect(e.simTime).toBe(0);
   });
 });
+
+describe('SimulationEngine 위치 고정', () => {
+  it('setPinned로 고정하면 움직이지 않고, 풀면 다시 움직인다', () => {
+    const e = new SimulationEngine();
+    e.spawn({ position: [0, 0, 0], velocity: [0, 0, 0], mass: 5000 });
+    const id = e.spawn({ position: [100, 0, 0], velocity: [0, 0, 0], mass: 1 });
+
+    e.setPinned(id, true);
+    expect(e.isPinned(id)).toBe(true);
+    for (let i = 0; i < 60; i++) e.step(1 / 60);
+    expect(e.bodies.posX[e.bodies.indexOfId(id)]).toBe(100);
+
+    e.setPinned(id, false);
+    expect(e.isPinned(id)).toBe(false);
+    for (let i = 0; i < 60; i++) e.step(1 / 60);
+    expect(e.bodies.posX[e.bodies.indexOfId(id)]).toBeLessThan(100);
+  });
+
+  it('고정하면 그 순간의 속도가 0이 된다', () => {
+    const e = new SimulationEngine();
+    const id = e.spawn({ position: [0, 0, 0], velocity: [7, 0, 3], mass: 1 });
+    e.setPinned(id, true);
+    const i = e.bodies.indexOfId(id);
+    expect(e.bodies.velX[i]).toBe(0);
+    expect(e.bodies.velZ[i]).toBe(0);
+  });
+
+  it('없는 id에 setPinned를 불러도 아무 일도 일어나지 않는다', () => {
+    const e = new SimulationEngine();
+    e.setPinned(999, true);
+    expect(e.isPinned(999)).toBe(false);
+  });
+
+  it('serialize → load 왕복이 고정 상태를 보존한다', () => {
+    const e = new SimulationEngine();
+    const id = e.spawn({ position: [1, 2, 3], velocity: [0, 0, 0], mass: 7 });
+    e.setPinned(id, true);
+
+    const e2 = new SimulationEngine();
+    e2.load(e.serialize());
+
+    expect(e2.bodies.pinned[0]).toBe(1);
+  });
+});

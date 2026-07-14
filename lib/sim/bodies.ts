@@ -11,6 +11,8 @@ export interface BodyInit {
   radius: number;
   type?: number;
   color?: [number, number, number];
+  /** 위치가 고정된 천체. 중력은 그대로 내뿜지만 스스로는 움직이지 않는다. */
+  pinned?: boolean;
 }
 
 /**
@@ -37,6 +39,8 @@ export class BodyBuffer {
   readonly colR: Float32Array;
   readonly colG: Float32Array;
   readonly colB: Float32Array;
+  /** 1이면 위치 고정. 적분기가 이 천체의 위치·속도 갱신만 건너뛴다 (중력은 그대로 작용한다). */
+  readonly pinned: Uint8Array;
 
   // clear()가 이 값을 되돌리지 않는다는 것이 지켜야 할 불변식이다: 리셋 이후 스폰되는
   // 천체도 항상 새 id를 받는다. 이게 없으면 Trails의 슬롯 id나 오래된 selectedId가
@@ -63,6 +67,7 @@ export class BodyBuffer {
     this.colR = new Float32Array(capacity);
     this.colG = new Float32Array(capacity);
     this.colB = new Float32Array(capacity);
+    this.pinned = new Uint8Array(capacity);
   }
 
   /** @returns 새 천체의 id. 용량이 가득 찼으면 -1. */
@@ -84,6 +89,7 @@ export class BodyBuffer {
     this.radius[i] = b.radius;
     this.type[i] = b.type ?? BodyType.NORMAL;
     this.id[i] = id;
+    this.pinned[i] = b.pinned ? 1 : 0;
 
     const [r, g, bl] = b.color ?? [1, 1, 1];
     this.colR[i] = r;
@@ -114,6 +120,7 @@ export class BodyBuffer {
       this.colR[i] = this.colR[last];
       this.colG[i] = this.colG[last];
       this.colB[i] = this.colB[last];
+      this.pinned[i] = this.pinned[last];
     }
     this.count = last;
   }
