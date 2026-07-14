@@ -1,0 +1,115 @@
+import { describe, it, expect, vi } from 'vitest';
+import { SimulationEngine, FIXED_DT, MAX_SUBSTEPS } from './engine';
+import { MAX_BODIES, radiusFromMass } from './units';
+
+const spawn = (e: SimulationEngine, x: number, mass = 10) =>
+  e.spawn({ position: [x, 0, 0], velocity: [0, 0, 0], mass });
+
+describe('SimulationEngine', () => {
+  it('일시정지 상태에서는 시간이 흐르지 않는다', () => {
+    const e = new SimulationEngine();
+    spawn(e, 0);
+    e.paused = true;
+    e.step(1);
+    expect(e.simTime).toBe(0);
+  });
+
+  it('배속을 올리면 같은 실시간에 더 많은 시뮬레이션 시간이 흐른다', () => {
+    const a = new SimulationEngine();
+    const b = new SimulationEngine();
+    a.step(0.1);
+    b.timeScale = 4;
+    b.step(0.1);
+    expect(b.simTime).toBeGreaterThan(a.simTime * 3.5);
+  });
+
+  it('프레임 dt가 튀어도 서브스텝 상한을 넘지 않는다 (죽음의 나선 방지)', () => {
+    const e = new SimulationEngine();
+    e.step(10); // 탭 복귀 등으로 dt가 10초 튄 상황
+    expect(e.simTime).toBeLessThanOrEqual(MAX_SUBSTEPS * FIXED_DT + 1e-9);
+  });
+
+  it('용량이 가득 차면 spawn이 -1을 반환한다', () => {
+    const e = new SimulationEngine();
+    for (let i = 0; i < MAX_BODIES; i++) spawn(e, i * 100);
+    expect(spawn(e, 999)).toBe(-1);
+    expect(e.bodies.count).toBe(MAX_BODIES);
+  });
+
+  it('setMass는 반지름도 함께 갱신한다', () => {
+    const e = new SimulationEngine();
+    const id = spawn(e, 0, 10);
+    e.setMass(id, 8000);
+    const i = e.bodies.indexOfId(id);
+    expect(e.bodies.mass[i]).toBe(8000);
+    expect(e.bodies.radius[i]).toBeCloseTo(radiusFromMass(8000), 10);
+  });
+
+  it('applyImpulse는 속도를 바꾼다', () => {
+    const e = new SimulationEngine();
+    const id = spawn(e, 0);
+    e.applyImpulse(id, 3, 0, 0);
+    expect(e.bodies.velX[e.bodies.indexOfId(id)]).toBeCloseTo(3, 10);
+  });
+
+  it('같은 입력에 같은 결과를 낸다 (결정론)', () => {
+    const build = () => {
+      const e = new SimulationEngine();
+      e.spawn({ position: [0, 0, 0], velocity: [0, 0, 0], mass: 1000 });
+      e.spawn({ position: [80, 0, 0], velocity: [0, 0, 3.5], mass: 5 });
+      e.spawn({ position: [-60, 0, 20], velocity: [0.5, 0, -3], mass: 5 });
+      return e;
+    };
+    const a = build();
+    const b = build();
+    for (let i = 0; i < 300; i++) {
+      a.step(1 / 60);
+      b.step(1 / 60);
+    }
+    expect(a.bodies.count).toBe(b.bodies.count);
+    for (let i = 0; i < a.bodies.count; i++) {
+      expect(a.bodies.posX[i]).toBe(b.bodies.posX[i]);
+      expect(a.bodies.posZ[i]).toBe(b.bodies.posZ[i]);
+    }
+  });
+
+  it('오염된 천체(NaN)를 제거하고 다른 천체로 전염시키지 않는다', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const e = new SimulationEngine();
+    const healthy = e.spawn({ position: [500, 0, 0], velocity: [0, 0, 0], mass: 1 });
+    const sick = spawn(e, 0);
+
+    e.bodies.velX[e.bodies.indexOfId(sick)] = Number.NaN;
+    e.step(1 / 60);
+
+    expect(e.bodies.indexOfId(sick)).toBe(-1);
+    const h = e.bodies.indexOfId(healthy);
+    expect(h).not.toBe(-1);
+    expect(Number.isFinite(e.bodies.posX[h])).toBe(true);
+    warn.mockRestore();
+  });
+
+  it('serialize → load 왕복이 상태를 보존한다', () => {
+    const e = new SimulationEngine();
+    e.spawn({ position: [1, 2, 3], velocity: [4, 5, 6], mass: 7, color: [0.1, 0.2, 0.3] });
+    e.step(1 / 60);
+    const snapshot = e.serialize();
+
+    const e2 = new SimulationEngine();
+    e2.load(snapshot);
+
+    expect(e2.bodies.count).toBe(e.bodies.count);
+    expect(e2.simTime).toBe(e.simTime);
+    expect(e2.bodies.posX[0]).toBe(e.bodies.posX[0]);
+    expect(e2.bodies.mass[0]).toBe(e.bodies.mass[0]);
+  });
+
+  it('reset은 모든 천체와 시간을 지운다', () => {
+    const e = new SimulationEngine();
+    spawn(e, 0);
+    e.step(1 / 60);
+    e.reset();
+    expect(e.bodies.count).toBe(0);
+    expect(e.simTime).toBe(0);
+  });
+});

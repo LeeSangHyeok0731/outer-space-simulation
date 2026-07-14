@@ -155,6 +155,7 @@ lib/sim/            엔진 (React·three 모름, 테스트 대상)
   integrator.ts     립프로그 + 소프트닝 중력
   collisions.ts     병합
   units.ts          G, 질량↔반지름, 프리셋
+  scenes.ts         시작용 항성계 (3단계 프리셋의 씨앗)
   predict.ts        던지기 궤적 미리보기
   *.test.ts         물리 테스트
 components/scene/   Canvas 내부 (엔진을 읽어 그리기만)
@@ -179,9 +180,11 @@ engine.setMass(id, m)        // 2단계: 신의 손
 engine.remove(id)            // 2단계
 engine.serialize(): State    // 3단계: 세이브
 engine.load(state)           // 3단계: 프리셋 로드
-engine.applyForce(id, vec)   // 4단계: 우주선 추력
+engine.applyImpulse(id, dvx, dvy, dvz)   // 4단계: 우주선 추력 (dv = F/m·dt)
 body.type                    // 0=일반, 1=블랙홀, 2=선박
 ```
+
+> **2026-07-14 변경:** `applyForce`를 `applyImpulse`로 바꿨다. 힘을 받으려면 프레임 사이에 힘을 누적할 버퍼가 필요한데, 1단계에서는 아무도 쓰지 않아 죽은 코드가 된다. 추력은 `dv = F/m·dt`로 임펄스와 동등하게 표현되므로 4단계 능력에는 손실이 없다.
 
 ## 11. 비목표 (이번 단계에서 하지 않는 것)
 
