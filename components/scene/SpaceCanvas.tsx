@@ -2,6 +2,7 @@
 
 import { Canvas } from '@react-three/fiber';
 import { Bloom, EffectComposer } from '@react-three/postprocessing';
+import AccretionDisks from './AccretionDisks';
 import Bodies from './Bodies';
 import CameraRig from './CameraRig';
 import PinMarkers from './PinMarkers';
@@ -27,6 +28,7 @@ export default function SpaceCanvas() {
       <Bodies />
       <Trails />
       <PinMarkers />
+      <AccretionDisks />
       <CameraRig />
       <SpawnController />
       <EffectComposer>
