@@ -111,6 +111,12 @@ export class SimulationEngine {
     // 이전 프레임 이후 버퍼를 직접 건드렸을 수 있으므로(외부 주입, 잔여 오염 등)
     // 힘 계산 전에 먼저 검역한다. 여기서 거르지 않으면 오염된 위치가
     // computeAccelerations의 쌍별 계산을 타고 건강한 천체에게까지 전염된다.
+    //
+    // 알려진 한계(스펙 §4 참고): integrate()는 drift 직후 내부에서
+    // computeAccelerations를 재호출한다. 그래서 이 시점엔 정상이던 천체가
+    // drift 도중 오버플로로 오염되는 경우는 이 검역으로 막을 수 없다 —
+    // 그 오염은 integrate() 내부의 재계산에서 같은 호출 안에 번지고,
+    // 아래쪽 sanitize()가 전염된 건강한 천체까지 함께 제거해 버린다.
     this.sanitize();
 
     if (this.accDirty) {
@@ -121,6 +127,9 @@ export class SimulationEngine {
     integrate(this.bodies, dt);
 
     if (resolveCollisions(this.bodies)) this.accDirty = true;
+    // 이번 스텝에서 충돌/병합, 또는 integrate() 내부 오버플로로 새로 생긴
+    // 오염을 잡는다. 위 주석의 한계로 인해 원래 건강했던 천체가 여기서
+    // 함께 제거될 수 있다.
     this.sanitize();
 
     this.simTime += dt;
@@ -178,6 +187,13 @@ export class SimulationEngine {
     return { simTime: this.simTime, bodies };
   }
 
+  /**
+   * 저장된 상태를 불러온다.
+   *
+   * 주의: `BodyBuffer.add()`가 항상 새 id를 발급하므로, `state.bodies[].id`는
+   * 무시된다 — serialize() → load() 왕복은 id를 보존하지 않는다. 세이브/로드
+   * 경계를 넘나드는 UI 상태(예: 선택된 천체 id)는 id 안정성을 가정하면 안 된다.
+   */
   load(state: SerializedState): void {
     this.reset();
     for (const body of state.bodies) this.bodies.add(body);

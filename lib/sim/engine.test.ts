@@ -89,7 +89,7 @@ describe('SimulationEngine', () => {
     warn.mockRestore();
   });
 
-  it('serialize → load 왕복이 상태를 보존한다', () => {
+  it('serialize → load 왕복이 천체 수·위치·질량·simTime을 보존한다', () => {
     const e = new SimulationEngine();
     e.spawn({ position: [1, 2, 3], velocity: [4, 5, 6], mass: 7, color: [0.1, 0.2, 0.3] });
     e.step(1 / 60);
