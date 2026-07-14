@@ -1,7 +1,8 @@
 import { BodyBuffer, type BodyInit } from './bodies';
+import { applyCollapse, applyHawking, collapseAt, isBlackHoleAt } from './blackhole';
 import { resolveCollisions } from './collisions';
 import { computeAccelerations, integrate } from './integrator';
-import { BodyType, MAX_BODIES, radiusFromMass } from './units';
+import { BodyType, MAX_BODIES, radiusFromMass, schwarzschildRadius } from './units';
 
 /** 물리 스텝은 화면 프레임과 무관하게 항상 이 간격으로 돈다. */
 export const FIXED_DT = 1 / 120;
@@ -73,7 +74,11 @@ export class SimulationEngine {
     const i = this.bodies.indexOfId(id);
     if (i === -1) return;
     this.bodies.mass[i] = mass;
-    this.bodies.radius[i] = radiusFromMass(mass);
+    // 블랙홀의 반지름은 사건의 지평선이지 밀도 기반 반지름이 아니다. 일시정지 중에는
+    // 호킹 증발이 돌지 않아 여기서 갱신하지 않으면 틀린 반지름이 그대로 남는다.
+    this.bodies.radius[i] = isBlackHoleAt(this.bodies, i)
+      ? schwarzschildRadius(mass)
+      : radiusFromMass(mass);
     this.accDirty = true;
   }
 
@@ -101,6 +106,25 @@ export class SimulationEngine {
   isPinned(id: number): boolean {
     const i = this.bodies.indexOfId(id);
     return i !== -1 && this.bodies.pinned[i] === 1;
+  }
+
+  /**
+   * 신의 손 치트. 질량과 무관하게 즉시 블랙홀로 만든다.
+   *
+   * 물리적 근거가 없는 유일한 규칙이지만, 호킹 증발이 스스로 벌을 준다 — 작은 블랙홀은
+   * 흡수 반경이 거의 0이라 아무것도 못 먹고 순식간에 증발해 사라진다.
+   *
+   * 질량이 변하지 않으므로 가속도는 그대로 유효하다(accDirty 불필요).
+   */
+  collapseToBlackHole(id: number): void {
+    const i = this.bodies.indexOfId(id);
+    if (i === -1) return;
+    collapseAt(this.bodies, i);
+  }
+
+  isBlackHole(id: number): boolean {
+    const i = this.bodies.indexOfId(id);
+    return i !== -1 && isBlackHoleAt(this.bodies, i);
   }
 
   /** 4단계(우주선 추력)용. 추력 F를 dt 동안 준 효과는 dv = F/m·dt 다. */
@@ -152,7 +176,17 @@ export class SimulationEngine {
 
     integrate(this.bodies, dt);
 
+    // 순서가 중요하다. 병합이 질량을 바꾸므로 붕괴 검사는 병합 **뒤**에 와야
+    // "항성 둘이 합쳐지는 순간 블랙홀이 된다"가 성립한다.
     if (resolveCollisions(this.bodies)) this.accDirty = true;
+
+    // 임계 질량을 넘긴 천체가 스스로 무너진다. 질량은 그대로이므로 가속도에는
+    // 영향이 없지만, 반지름이 바뀌므로 다음 충돌 판정이 달라진다.
+    applyCollapse(this.bodies);
+
+    // 호킹 증발. 천체가 사라졌을 때만 true를 반환한다 — 질량이 조금 줄어든 것만으로
+    // 가속도를 무효화하면 블랙홀이 하나만 있어도 물리 비용이 2배가 된다.
+    if (applyHawking(this.bodies, dt)) this.accDirty = true;
     // 이번 스텝에서 충돌/병합, 또는 integrate() 내부 오버플로로 새로 생긴
     // 오염을 잡는다. 위 주석의 한계로 인해 원래 건강했던 천체가 여기서
     // 함께 제거될 수 있다.

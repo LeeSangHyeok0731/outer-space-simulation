@@ -35,3 +35,52 @@ export function radiusFromMass(mass: number): number {
   const r = Math.cbrt((3 * Math.abs(mass)) / (4 * Math.PI * DENSITY));
   return Math.max(r, MIN_RADIUS);
 }
+
+/**
+ * 시뮬레이션 광속. 블랙홀의 모든 것이 이 상수 하나에서 파생된다.
+ *
+ * 실제 c(3e8 m/s)를 쓰면 태양질량 블랙홀의 사건의 지평선이 3km — 별 크기에 비해
+ * 점에 불과해 화면에 보이지도, 아무것도 삼키지도 못한다. C를 작게 잡는다는 것은
+ * "우리 우주는 빛이 느리다"고 정하는 것이고, 그 대가로 블랙홀이 손에 잡히는 크기가 된다.
+ */
+export const C = 25;
+
+/**
+ * 자동 붕괴 임계 질량. 이 이상이면 스스로 무너져 블랙홀이 된다.
+ *
+ * 찬드라세카르 한계(전자 축퇴압의 한계)와 TOV 한계(중성자 축퇴압의 한계)의 번안이다 —
+ * "더 이상 버틸 브레이크가 없다"는 진짜 원리가 그대로 게임 규칙이 된다.
+ * 항성 프리셋(2000) 둘을 충돌시키면 넘는 값이라, 발견 가능하고 극적이다.
+ */
+export const COLLAPSE_MASS = 3000;
+
+/** 호킹 복사 계수. dM/dt = -HAWKING_K / M² — 작을수록 미친 듯이 빨리 증발한다. */
+export const HAWKING_K = 0.2;
+
+/** 증발하는 블랙홀이 이 질량 아래로 떨어지면 소멸시킨다. */
+export const EVAPORATION_FLOOR = 0.01;
+
+/**
+ * 사건의 지평선 반지름. `r_s = 2GM/c²`
+ *
+ * 질량에 **정비례**한다는 것이 핵심이다. 일반 천체의 반지름은 `∛m`으로 굼뜨게 자라는데
+ * (밀도 일정 가정, `radiusFromMass` 참고), 블랙홀은 먹을수록 흡수 반경이 선형으로 커진다.
+ * 폭주 성장은 규칙으로 만든 것이 아니라 이 식에서 저절로 나온다.
+ *
+ * `MIN_RADIUS` 하한을 걸지 않는다 — 작은 블랙홀은 실제로 작고, 어차피 곧 증발한다.
+ */
+export function schwarzschildRadius(mass: number): number {
+  return (2 * G * Math.abs(mass)) / (C * C);
+}
+
+/**
+ * 최내부 안정 원궤도(ISCO) 반지름. 슈바르츠실트 블랙홀에서는 `3 r_s`다.
+ *
+ * **이 안쪽에는 안정 궤도가 존재하지 않는다.** 뉴턴 중력에서는 아무리 가까워도 빠르기만
+ * 하면 궤도를 돌 수 있지만, 실제 블랙홀 근처에서는 어떤 속도로도 궤도를 유지할 수 없고
+ * 나선을 그리며 빨려든다. 이 한 줄이 "블랙홀은 무거운 항성과 무엇이 다른가"에 대한 답이며,
+ * 이 값이 곧 흡수 반경이 된다.
+ */
+export function iscoRadius(mass: number): number {
+  return 3 * schwarzschildRadius(mass);
+}

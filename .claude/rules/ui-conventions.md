@@ -30,7 +30,7 @@ Use these rules when reviewing or implementing UI in this repository. "UI" here 
 - The intrinsic `<line>` element collides with the SVG `line` type. Build a `THREE.Line` yourself (`useMemo`) and mount it with `<primitive object={line} ref={...} />`, as `SpawnController.tsx`'s throw-preview does. Attach geometry attributes and dispose geometry/material in a `useEffect`, not during render.
 - Dispose or memoize geometries and materials created imperatively. `useMemo` geometry/material on the values they depend on; dispose in the matching effect cleanup.
 - No `.glb` assets are loaded in this codebase (the one prototype asset under `public/3D/` was removed as unreferenced). If a `.glb` is reintroduced, load it with drei's `useGLTF`, preload at module scope, and clone the scene before mutating it per instance.
-- The look is `meshBasicMaterial`/`lineBasicMaterial` with `toneMapped={false}` (so materials output raw, unclamped color) plus `@react-three/postprocessing`'s `<Bloom>` in `SpaceCanvas.tsx` — not emissive materials or `AdditiveBlending`. Keep new glowing scene objects consistent with that pattern rather than introducing a different one.
+- The look is `meshBasicMaterial`/`lineBasicMaterial` with `toneMapped={false}` (so materials output raw, unclamped color) plus `@react-three/postprocessing`'s `<Bloom>` in `SpaceCanvas.tsx` — not emissive materials or `AdditiveBlending`. Keep new glowing scene objects consistent with that pattern rather than introducing a different one. `AccretionDisks.tsx` is the single exception: its accretion disk uses `AdditiveBlending` to achieve the semi-transparent, layered plasma look it requires, which Bloom alone does not provide. Do not copy this exception to other objects.
 
 ## Interaction
 

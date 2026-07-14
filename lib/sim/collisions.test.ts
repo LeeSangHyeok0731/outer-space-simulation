@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { collapseAt } from './blackhole';
 import { BodyBuffer } from './bodies';
 import { resolveCollisions } from './collisions';
+import { BodyType, G, iscoRadius, schwarzschildRadius } from './units';
 
 describe('resolveCollisions', () => {
   it('겹치지 않으면 아무 일도 일어나지 않는다', () => {
@@ -104,5 +106,156 @@ describe('고정된 천체의 병합', () => {
     resolveCollisions(b);
     expect(b.pinned[0]).toBe(0);
     expect(b.velX[0]).toBeCloseTo(2.5, 10);
+  });
+});
+
+describe('블랙홀의 흡수', () => {
+  it('ISCO 안에 들어오면 원궤도 속도로 돌고 있어도 삼켜진다', () => {
+    // 이것이 이 설계의 핵심이다. 뉴턴 중력에서는 아무리 가까워도 빠르기만 하면
+    // 궤도를 돌 수 있다. 실제 블랙홀 근처에는 안정 궤도가 없다.
+    const b = new BodyBuffer(4);
+    const bhMass = 5000;
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: bhMass, radius: 1 });
+    collapseAt(b, 0);
+
+    const isco = iscoRadius(bhMass);
+    const r = isco * 0.9; // ISCO 안쪽
+    const vCircular = Math.sqrt((G * bhMass) / r); // 완벽한 원궤도 속도
+
+    b.add({ x: r, y: 0, z: 0, vx: 0, vy: 0, vz: vCircular, mass: 1, radius: 0.3 });
+
+    expect(resolveCollisions(b)).toBe(true);
+    expect(b.count).toBe(1); // 궤도 속도를 갖고 있어도 소용없다
+  });
+
+  it('ISCO 밖에서는 삼켜지지 않는다 (중력은 그대로다)', () => {
+    const b = new BodyBuffer(4);
+    const bhMass = 5000;
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: bhMass, radius: 1 });
+    collapseAt(b, 0);
+
+    const r = iscoRadius(bhMass) * 1.1; // ISCO 바깥
+    b.add({ x: r, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 1, radius: 0.3 });
+
+    expect(resolveCollisions(b)).toBe(false);
+    expect(b.count).toBe(2);
+  });
+
+  it('블랙홀의 흡수 반경은 사건의 지평선보다 훨씬 크다', () => {
+    // 검은 구(r_s)에 닿기 한참 전에 이미 삼켜진다.
+    const b = new BodyBuffer(4);
+    const bhMass = 5000;
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: bhMass, radius: 1 });
+    collapseAt(b, 0);
+
+    const rs = schwarzschildRadius(bhMass);
+    b.add({ x: rs * 2.5, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 1, radius: 0.3 });
+
+    expect(resolveCollisions(b)).toBe(true); // r_s의 2.5배 거리인데도 삼켜진다 (ISCO = 3 r_s)
+  });
+
+  it('블랙홀이 이긴다: 가벼운 블랙홀이 무거운 항성을 먹어도 결과는 블랙홀', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 1000, radius: 1 });
+    collapseAt(b, 0);
+    const bhId = b.id[0];
+
+    // 훨씬 무거운 항성을 ISCO 안에 놓는다
+    b.add({ x: iscoRadius(1000) * 0.5, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 9000, radius: 12 });
+
+    resolveCollisions(b);
+
+    expect(b.count).toBe(1);
+    expect(b.type[0]).toBe(BodyType.BLACK_HOLE);
+    expect(b.id[0]).toBe(bhId); // 정체성도 블랙홀 쪽을 물려받는다
+    expect(b.mass[0]).toBeCloseTo(10000, 6);
+    expect(b.colR[0]).toBe(0); // 여전히 검다
+  });
+
+  it('블랙홀이 높은 인덱스에 있어도 이긴다 (j쪽 정체성 승계)', () => {
+    // 앞 테스트는 블랙홀이 i=0이라 정체성이 그대로 유지되는 경로만 탄다.
+    // 여기서는 일반 천체가 i=0, 블랙홀이 j=1이라 j쪽 정체성을 물려받는 경로를 탄다.
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 9000, radius: 12 }); // 무거운 항성, i=0
+    b.add({ x: iscoRadius(1000) * 0.5, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 1000, radius: 1 }); // 가벼운 블랙홀 후보, j=1
+    collapseAt(b, 1);
+    const bhId = b.id[1];
+
+    resolveCollisions(b);
+
+    expect(b.count).toBe(1);
+    expect(b.type[0]).toBe(BodyType.BLACK_HOLE);
+    expect(b.id[0]).toBe(bhId); // 무거운 항성이 아니라 블랙홀 쪽 정체성을 물려받는다
+    expect(b.mass[0]).toBeCloseTo(10000, 6);
+    expect(b.colR[0]).toBe(0);
+  });
+
+  it('질량이 다른 두 블랙홀은 더 큰 ISCO로 삼킨다', () => {
+    // captureDistance의 Math.max를 실제로 변별한다: 작은 블랙홀의 ISCO 밖이지만
+    // 큰 블랙홀의 ISCO 안인 거리에 두 블랙홀을 놓으면 삼켜져야 한다.
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 100, radius: 1 }); // 작은 블랙홀
+    collapseAt(b, 0);
+    const big = 8000;
+    const d = (iscoRadius(100) + iscoRadius(big)) / 2; // 작은 ISCO 밖, 큰 ISCO 안
+    b.add({ x: d, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: big, radius: 1 }); // 큰 블랙홀
+    collapseAt(b, 1);
+
+    expect(d).toBeGreaterThan(iscoRadius(100)); // 작은 블랙홀만이라면 삼키지 못할 거리
+    expect(resolveCollisions(b)).toBe(true);
+    expect(b.count).toBe(1);
+    expect(b.mass[0]).toBeCloseTo(big + 100, 6);
+  });
+
+  it('블랙홀의 반지름은 부피 합성이 아니라 사건의 지평선이다', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 4000, radius: 1 });
+    collapseAt(b, 0);
+    b.add({ x: 1, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 1000, radius: 8 });
+
+    resolveCollisions(b);
+
+    expect(b.radius[0]).toBeCloseTo(schwarzschildRadius(5000), 10);
+  });
+
+  it('블랙홀끼리 병합하면 질량이 합쳐진 블랙홀이 된다', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 4000, radius: 1 });
+    b.add({ x: 5, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 4000, radius: 1 });
+    collapseAt(b, 0);
+    collapseAt(b, 1);
+
+    resolveCollisions(b);
+
+    expect(b.count).toBe(1);
+    expect(b.type[0]).toBe(BodyType.BLACK_HOLE);
+    expect(b.mass[0]).toBeCloseTo(8000, 6);
+    expect(b.radius[0]).toBeCloseTo(schwarzschildRadius(8000), 10);
+  });
+
+  it('일반 천체끼리는 기존 규칙 그대로다 (부피 보존)', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 1, radius: 3 });
+    b.add({ x: 0.5, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 1, radius: 4 });
+
+    resolveCollisions(b);
+
+    expect(b.type[0]).toBe(BodyType.NORMAL);
+    expect(b.radius[0]).toBeCloseTo(Math.cbrt(27 + 64), 10);
+  });
+
+  it('고정된 블랙홀은 먹어도 밀리지 않는다', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 100, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 5000, radius: 1, pinned: true });
+    collapseAt(b, 0);
+    b.add({ x: 110, y: 0, z: 0, vx: -50, vy: 0, vz: 0, mass: 100, radius: 1 });
+
+    resolveCollisions(b);
+
+    expect(b.count).toBe(1);
+    expect(b.posX[0]).toBe(100);
+    expect(b.velX[0]).toBe(0);
+    expect(b.pinned[0]).toBe(1);
+    expect(b.type[0]).toBe(BodyType.BLACK_HOLE);
   });
 });
