@@ -2,7 +2,7 @@ import { BodyBuffer, type BodyInit } from './bodies';
 import { applyCollapse, applyHawking, collapseAt, isBlackHoleAt } from './blackhole';
 import { resolveCollisions } from './collisions';
 import { computeAccelerations, integrate } from './integrator';
-import { BodyType, MAX_BODIES, radiusFromMass } from './units';
+import { BodyType, MAX_BODIES, radiusFromMass, schwarzschildRadius } from './units';
 
 /** 물리 스텝은 화면 프레임과 무관하게 항상 이 간격으로 돈다. */
 export const FIXED_DT = 1 / 120;
@@ -74,7 +74,11 @@ export class SimulationEngine {
     const i = this.bodies.indexOfId(id);
     if (i === -1) return;
     this.bodies.mass[i] = mass;
-    this.bodies.radius[i] = radiusFromMass(mass);
+    // 블랙홀의 반지름은 사건의 지평선이지 밀도 기반 반지름이 아니다. 일시정지 중에는
+    // 호킹 증발이 돌지 않아 여기서 갱신하지 않으면 틀린 반지름이 그대로 남는다.
+    this.bodies.radius[i] = isBlackHoleAt(this.bodies, i)
+      ? schwarzschildRadius(mass)
+      : radiusFromMass(mass);
     this.accDirty = true;
   }
 

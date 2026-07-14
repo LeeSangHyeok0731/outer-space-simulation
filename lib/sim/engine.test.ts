@@ -293,4 +293,28 @@ describe('SimulationEngine 블랙홀', () => {
       expect(a.bodies.mass[i]).toBe(b.bodies.mass[i]);
     }
   });
+
+  it('setMass는 블랙홀의 반지름을 사건의 지평선으로 유지한다 (일시정지 중에도, step 없이 즉시)', () => {
+    const e = new SimulationEngine();
+    const id = e.spawn({ position: [0, 0, 0], velocity: [0, 0, 0], mass: 5000 });
+    e.collapseToBlackHole(id);
+    e.paused = true;
+
+    e.setMass(id, 9000);
+
+    const i = e.bodies.indexOfId(id);
+    expect(e.bodies.mass[i]).toBe(9000);
+    expect(e.bodies.radius[i]).toBeCloseTo(schwarzschildRadius(9000), 10);
+  });
+
+  it('setMass는 일반 천체에는 기존대로 밀도 기반 반지름을 적용한다 (회귀 없음)', () => {
+    const e = new SimulationEngine();
+    const id = e.spawn({ position: [0, 0, 0], velocity: [0, 0, 0], mass: 20 });
+
+    e.setMass(id, 80);
+
+    const i = e.bodies.indexOfId(id);
+    expect(e.bodies.mass[i]).toBe(80);
+    expect(e.bodies.radius[i]).toBeCloseTo(radiusFromMass(80), 10);
+  });
 });
