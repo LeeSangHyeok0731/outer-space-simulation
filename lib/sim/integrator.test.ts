@@ -53,7 +53,9 @@ describe('integrate (립프로그)', () => {
 
     const r = Math.hypot(b.posX[1] - b.posX[0], b.posY[1] - b.posY[0], b.posZ[1] - b.posZ[0]);
     expect(Math.abs(r - r0) / r0).toBeLessThan(0.01);
-  });
+    // 240만 스텝을 돈다. 한가한 머신에서는 ~330ms지만 부하가 걸리면 기본 5초 제한을
+    // 넘겨 실패한 적이 있다. 느려서 나는 빨간불은 회귀 신호를 가릴 뿐이라 넉넉히 준다.
+  }, 30_000);
 
   it('중력이 없는 단일 천체는 등속 직선 운동한다', () => {
     const b = new BodyBuffer(2);

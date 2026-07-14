@@ -50,5 +50,7 @@ describe('createStarterSystem', () => {
       expect(r).toBeGreaterThan(150);
       expect(r).toBeLessThan(300);
     }
-  });
+    // 64개 천체를 60 시뮬레이션-초만큼 굴린다. 한가한 머신에서는 ~330ms지만 부하가
+    // 걸리면 기본 5초 제한을 넘겨 실패한 적이 있다. 느려서 나는 빨간불은 회귀 신호를 가린다.
+  }, 30_000);
 });
