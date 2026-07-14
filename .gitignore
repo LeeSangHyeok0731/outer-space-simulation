@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude harness runtime artifacts
+.claude/command.log
+_workspace/
+_workspace_*/
+.superpowers/

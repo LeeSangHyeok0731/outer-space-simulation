@@ -1,0 +1,47 @@
+name: CI
+
+# PR을 열거나 커밋을 밀 때마다, 그리고 main에 들어갈 때마다 돌린다.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# 같은 PR에 커밋을 연달아 밀면 이전 실행은 취소한다 — 어차피 최신 것만 의미가 있다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 버전은 package.json의 packageManager 필드에서 읽는다 — CI와 로컬이 갈라지지 않는다.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # lockfile과 package.json이 어긋나면 여기서 바로 실패한다.
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+
+      # 한 단계가 실패해도 나머지를 마저 돌려서, 재실행 없이 전체 상태를 한 번에 본다.
+      - name: 물리 엔진 테스트
+        run: pnpm test
+
+      - name: 타입 검사
+        if: '!cancelled()'
+        run: pnpm check-types
+
+      - name: 린트
+        if: '!cancelled()'
+        run: pnpm lint
+
+      - name: 프로덕션 빌드
+        if: '!cancelled()'
+        run: pnpm build
