@@ -5,6 +5,7 @@ import Bodies from './Bodies';
 import CameraRig from './CameraRig';
 import SpawnController from './SpawnController';
 import Starfield from './Starfield';
+import Trails from './Trails';
 
 export default function SpaceCanvas() {
   return (
@@ -22,6 +23,7 @@ export default function SpaceCanvas() {
           (예: Task 12의 Trails)는 같은 프레임 안에서 갱신된 상태를 보도록 Bodies보다
           뒤에 마운트해야 한다. */}
       <Bodies />
+      <Trails />
       <CameraRig />
       <SpawnController />
     </Canvas>
