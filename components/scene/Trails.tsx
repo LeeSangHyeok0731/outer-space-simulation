@@ -25,7 +25,11 @@ export default function Trails() {
     head: new Int32Array(TRACKED), // 링버퍼 쓰기 위치
   });
 
-  const sampleTimer = useRef(0);
+  // 마지막으로 샘플을 찍은 시점의 engine.simTime. delta*timeScale이 아니라 엔진이
+  // 실제로 적분한 시간(simTime)을 기준으로 삼아야 한다 — step()이 MAX_SUBSTEPS에
+  // 걸려 밀린 시간을 버리는 경우, delta*timeScale은 실제보다 더 많은 시간이
+  // 흘렀다고 믿게 된다.
+  const lastSampleTime = useRef(0);
   const retargetTimer = useRef(RETARGET_DT); // 첫 프레임에 즉시 타깃 선정
 
   // geometry.getAttribute('position')는 BufferAttribute | InterleavedBufferAttribute 유니언을
@@ -101,30 +105,42 @@ export default function Trails() {
       }
     }
 
-    // 2. 시뮬레이션 시간 기준으로 샘플링 (배속을 올려도 궤적 길이가 일정하다)
-    sampleTimer.current += delta * engine.timeScale;
-    const shouldSample = !engine.paused && sampleTimer.current >= SAMPLE_DT;
-    if (shouldSample) {
-      sampleTimer.current = 0;
+    // 2. 엔진이 실제로 적분한 시간(simTime) 기준으로 샘플링한다 (배속을 올려도, 그리고
+    //    step()이 백로그를 버려도 궤적 길이는 실제로 흐른 sim-시간만큼만 늘어난다).
+    //    한 프레임에 simTime이 SAMPLE_DT의 여러 배만큼 전진했을 수 있으므로(고배속),
+    //    나머지를 버리지 않고 그만큼 여러 번 샘플링한다.
+    if (!engine.paused) {
+      // reset()으로 simTime이 과거로 되감기면(0으로) 그 시점에 맞춰 다시 동기화한다.
+      // 그러지 않으면 이전 simTime을 따라잡을 때까지 몇십 초간 샘플이 전혀 찍히지 않는다.
+      if (engine.simTime < lastSampleTime.current) {
+        lastSampleTime.current = engine.simTime;
+      }
 
-      for (let k = 0; k < TRACKED; k++) {
-        const id = s.ids[k];
-        if (id === 0) continue;
-        const i = b.indexOfId(id);
-        if (i === -1) {
-          // 이 슬롯이 추적하던 천체가 병합 등으로 사라졌다. 다음 재선정까지 비워 둔다.
-          s.ids[k] = 0;
-          s.filled[k] = 0;
-          continue;
+      // 링버퍼는 슬롯당 POINTS개뿐이므로, 그 이상 샘플을 찍어봐야 서로 덮어쓸 뿐이다.
+      let samples = 0;
+      while (engine.simTime - lastSampleTime.current >= SAMPLE_DT && samples < POINTS) {
+        lastSampleTime.current += SAMPLE_DT;
+        samples++;
+
+        for (let k = 0; k < TRACKED; k++) {
+          const id = s.ids[k];
+          if (id === 0) continue;
+          const i = b.indexOfId(id);
+          if (i === -1) {
+            // 이 슬롯이 추적하던 천체가 병합 등으로 사라졌다. 다음 재선정까지 비워 둔다.
+            s.ids[k] = 0;
+            s.filled[k] = 0;
+            continue;
+          }
+
+          const base = (k * POINTS + s.head[k]) * 3;
+          s.history[base] = b.posX[i];
+          s.history[base + 1] = b.posY[i];
+          s.history[base + 2] = b.posZ[i];
+
+          s.head[k] = (s.head[k] + 1) % POINTS;
+          if (s.filled[k] < POINTS) s.filled[k]++;
         }
-
-        const base = (k * POINTS + s.head[k]) * 3;
-        s.history[base] = b.posX[i];
-        s.history[base + 1] = b.posY[i];
-        s.history[base + 2] = b.posZ[i];
-
-        s.head[k] = (s.head[k] + 1) % POINTS;
-        if (s.filled[k] < POINTS) s.filled[k]++;
       }
     }
 
