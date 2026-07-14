@@ -1,13 +1,22 @@
 'use client';
 
 import { BODY_PRESETS, type PresetKey } from '@/lib/sim/units';
-import { useSimulation } from '@/state/SimulationProvider';
+import { SCATTER_MAX, SCATTER_MIN, useSimulation } from '@/state/SimulationProvider';
 
 const PRESET_KEYS: PresetKey[] = ['asteroid', 'planet', 'star'];
 
 export default function SpawnPanel() {
-  const { preset, setPreset, spawnMass, setSpawnMass, showTrails, setShowTrails } =
-    useSimulation();
+  const {
+    preset,
+    setPreset,
+    spawnMass,
+    setSpawnMass,
+    showTrails,
+    setShowTrails,
+    scatterCount,
+    setScatterCount,
+    scatter,
+  } = useSimulation();
 
   return (
     <div className="pointer-events-auto w-60 rounded-lg border border-sky-400/20 bg-slate-950/70 p-4 backdrop-blur">
@@ -44,6 +53,46 @@ export default function SpawnPanel() {
         onChange={(e) => setSpawnMass(Number(e.target.value))}
         className="mb-4 w-full accent-sky-400"
       />
+
+      <div className="mb-4 border-t border-sky-400/10 pt-3">
+        <h2 className="mb-2 text-xs font-semibold tracking-widest text-sky-300/80 uppercase">
+          무리 소환
+        </h2>
+
+        <label className="mb-2 flex items-center justify-between font-mono text-xs text-sky-200/70">
+          개수
+          <input
+            type="number"
+            min={SCATTER_MIN}
+            max={SCATTER_MAX}
+            value={scatterCount}
+            onChange={(e) => setScatterCount(Number(e.target.value))}
+            className="w-20 rounded border border-sky-400/20 bg-slate-900/80 px-2 py-1 text-right font-mono text-xs text-sky-100 focus:border-sky-400/60 focus:outline-none"
+          />
+        </label>
+
+        <div className="grid grid-cols-2 gap-1">
+          <button
+            type="button"
+            onClick={() => scatter('orbital')}
+            className="rounded bg-sky-500/15 px-2 py-2 text-xs text-sky-100 transition hover:bg-sky-500/35"
+          >
+            고리 뿌리기
+          </button>
+          <button
+            type="button"
+            onClick={() => scatter('chaotic')}
+            className="rounded bg-rose-500/15 px-2 py-2 text-xs text-rose-100 transition hover:bg-rose-500/35"
+          >
+            혼돈 뿌리기
+          </button>
+        </div>
+
+        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+          위에서 고른 질량으로 뿌립니다. 고리는 가장 무거운 천체 주위를 공전하고,
+          혼돈은 마구잡이로 흩어집니다.
+        </p>
+      </div>
 
       <label className="flex cursor-pointer items-center gap-2 text-xs text-sky-200/70">
         <input
