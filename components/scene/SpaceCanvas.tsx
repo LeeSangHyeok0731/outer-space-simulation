@@ -3,6 +3,7 @@
 import { Canvas } from '@react-three/fiber';
 import Bodies from './Bodies';
 import CameraRig from './CameraRig';
+import SpawnController from './SpawnController';
 import Starfield from './Starfield';
 
 export default function SpaceCanvas() {
@@ -22,6 +23,7 @@ export default function SpaceCanvas() {
           뒤에 마운트해야 한다. */}
       <Bodies />
       <CameraRig />
+      <SpawnController />
     </Canvas>
   );
 }
