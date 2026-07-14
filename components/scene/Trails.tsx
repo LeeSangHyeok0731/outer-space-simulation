@@ -70,14 +70,34 @@ export default function Trails() {
         next[next.length - 1] = selectedId;
       }
 
+      // 슬롯은 순위가 아니라 정체성으로 배정한다. 순위 위치로 배정하면 무거운 천체를
+      // 하나 던질 때마다 나머지 전부가 한 칸씩 밀려 32개 궤적이 통째로 초기화된다.
+      const targetIds = new Set(next);
+
+      // 대상 집합에서 빠진 슬롯만 비운다 (병합돼 사라졌거나 상위 32위 밖으로 밀린 천체)
       for (let k = 0; k < TRACKED; k++) {
-        const id = next[k] ?? 0;
-        if (s.ids[k] !== id) {
-          // 슬롯 주인이 바뀌면 그 슬롯의 이력을 버린다
-          s.ids[k] = id;
+        if (s.ids[k] !== 0 && !targetIds.has(s.ids[k])) {
+          s.ids[k] = 0;
           s.filled[k] = 0;
           s.head[k] = 0;
         }
+      }
+
+      // 이미 슬롯을 차지한 대상 id를 제외하고, 남은 대상 id를 빈 슬롯에 채운다
+      const assigned = new Set<number>();
+      for (let k = 0; k < TRACKED; k++) {
+        if (s.ids[k] !== 0) assigned.add(s.ids[k]);
+      }
+
+      let slotCursor = 0;
+      for (const id of next) {
+        if (assigned.has(id)) continue;
+        while (slotCursor < TRACKED && s.ids[slotCursor] !== 0) slotCursor++;
+        if (slotCursor >= TRACKED) break;
+        s.ids[slotCursor] = id;
+        s.filled[slotCursor] = 0;
+        s.head[slotCursor] = 0;
+        slotCursor++;
       }
     }
 
