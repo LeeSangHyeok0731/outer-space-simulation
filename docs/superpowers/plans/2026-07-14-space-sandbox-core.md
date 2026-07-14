@@ -2201,7 +2201,9 @@ export default function Trails() {
     const b = engine.bodies;
     const s = slots.current;
 
-    // 1. 주기적으로 추적 대상 재선정: 질량 상위 + 선택된 천체
+    // 1. 주기적으로 추적 대상 재선정: 질량 상위 + 선택된 천체.
+    //    이 블록은 초당 2회만 돈다. 전역 제약(useFrame 중 할당 금지)의 유일한 예외이며,
+    //    할당 없는 top-K 선택으로 복잡하게 만들 만한 이득이 없어 의도적으로 허용한다.
     retargetTimer.current += delta;
     if (retargetTimer.current >= RETARGET_DT) {
       retargetTimer.current = 0;
@@ -2269,26 +2271,32 @@ export default function Trails() {
       const g = i === -1 ? 1 : b.colG[i];
       const bl = i === -1 ? 1 : b.colB[i];
 
-      // 가장 오래된 점부터 순서대로 잇는다
+      // 가장 오래된 점부터 순서대로 잇는다.
+      // 한 세그먼트 = 정점 2개. 배열 리터럴을 만들지 않고 두 정점을 직접 쓴다
+      // (프레임당 수천 번 실행되는 루프이므로 여기서 할당하면 GC가 프레임을 잡아먹는다).
       const start = (s.head[k] - n + POINTS) % POINTS;
       for (let p = 0; p < n - 1; p++) {
         const a = (start + p) % POINTS;
         const c = (start + p + 1) % POINTS;
-        const fade = p / (n - 1); // 0=오래됨, 1=최신
+        const fade = p / (n - 1); // 0=오래됨(어두움), 1=최신(밝음)
 
-        for (const [idx, alpha] of [
-          [a, fade],
-          [c, fade],
-        ] as const) {
-          const src = (k * POINTS + idx) * 3;
-          pArr[v * 3] = s.history[src];
-          pArr[v * 3 + 1] = s.history[src + 1];
-          pArr[v * 3 + 2] = s.history[src + 2];
-          cArr[v * 3] = r * alpha;
-          cArr[v * 3 + 1] = g * alpha;
-          cArr[v * 3 + 2] = bl * alpha;
-          v++;
-        }
+        const srcA = (k * POINTS + a) * 3;
+        pArr[v * 3] = s.history[srcA];
+        pArr[v * 3 + 1] = s.history[srcA + 1];
+        pArr[v * 3 + 2] = s.history[srcA + 2];
+        cArr[v * 3] = r * fade;
+        cArr[v * 3 + 1] = g * fade;
+        cArr[v * 3 + 2] = bl * fade;
+        v++;
+
+        const srcC = (k * POINTS + c) * 3;
+        pArr[v * 3] = s.history[srcC];
+        pArr[v * 3 + 1] = s.history[srcC + 1];
+        pArr[v * 3 + 2] = s.history[srcC + 2];
+        cArr[v * 3] = r * fade;
+        cArr[v * 3 + 1] = g * fade;
+        cArr[v * 3 + 2] = bl * fade;
+        v++;
       }
     }
 
