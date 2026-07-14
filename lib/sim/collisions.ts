@@ -1,4 +1,26 @@
 import type { BodyBuffer } from './bodies';
+import { BodyType, iscoRadius, schwarzschildRadius } from './units';
+
+/**
+ * 두 천체가 합쳐지는 거리.
+ *
+ * 일반 천체끼리는 표면이 닿을 때(반지름 합)다. 블랙홀은 다르다 — **ISCO 안에 들어오면
+ * 속도와 무관하게 삼켜진다.** 뉴턴 중력에서는 아무리 가까워도 빠르기만 하면 궤도를 돌 수
+ * 있지만, 실제 블랙홀 근처(3 r_s 안쪽)에는 안정 궤도가 존재하지 않고 무엇이든 나선을
+ * 그리며 빨려든다. 이 한 줄이 블랙홀을 '검은 항성'이 아니게 만든다.
+ */
+function captureDistance(b: BodyBuffer, i: number, j: number): number {
+  const iBH = b.type[i] === BodyType.BLACK_HOLE;
+  const jBH = b.type[j] === BodyType.BLACK_HOLE;
+
+  if (!iBH && !jBH) return b.radius[i] + b.radius[j];
+
+  // 블랙홀이 둘이면 더 큰 ISCO가 이긴다.
+  let d = 0;
+  if (iBH) d = Math.max(d, iscoRadius(b.mass[i]));
+  if (jBH) d = Math.max(d, iscoRadius(b.mass[j]));
+  return d;
+}
 
 /**
  * j번 천체를 i번 천체에 흡수시킨다. 보존량:
@@ -44,7 +66,14 @@ function mergeInto(b: BodyBuffer, i: number, j: number): void {
   const r2 = b.radius[j];
   const radius = Math.cbrt(r1 * r1 * r1 + r2 * r2 * r2);
 
-  if (m2 > m1) {
+  const iBH = b.type[i] === BodyType.BLACK_HOLE;
+  const jBH = b.type[j] === BodyType.BLACK_HOLE;
+  const anyBH = iBH || jBH;
+
+  // 정체성(id·색·타입): 보통은 무거운 쪽이 이기지만, **블랙홀이 있으면 블랙홀이 이긴다.**
+  // 가벼운 블랙홀이 무거운 항성을 삼켜도 결과는 블랙홀이다.
+  const takeJ = iBH !== jBH ? jBH : m2 > m1;
+  if (takeJ) {
     b.id[i] = b.id[j];
     b.type[i] = b.type[j];
     b.colR[i] = b.colR[j];
@@ -53,7 +82,17 @@ function mergeInto(b: BodyBuffer, i: number, j: number): void {
   }
 
   b.mass[i] = m;
-  b.radius[i] = radius;
+
+  if (anyBH) {
+    // 블랙홀의 반지름은 부피 합성이 아니라 사건의 지평선이다.
+    b.type[i] = BodyType.BLACK_HOLE;
+    b.radius[i] = schwarzschildRadius(m);
+    b.colR[i] = 0;
+    b.colG[i] = 0;
+    b.colB[i] = 0;
+  } else {
+    b.radius[i] = radius;
+  }
   b.posX[i] = px;
   b.posY[i] = py;
   b.posZ[i] = pz;
@@ -76,9 +115,9 @@ export function resolveCollisions(b: BodyBuffer): boolean {
       const dx = b.posX[j] - b.posX[i];
       const dy = b.posY[j] - b.posY[i];
       const dz = b.posZ[j] - b.posZ[i];
-      const rsum = b.radius[i] + b.radius[j];
+      const capture = captureDistance(b, i, j);
 
-      if (dx * dx + dy * dy + dz * dz < rsum * rsum) {
+      if (dx * dx + dy * dy + dz * dz < capture * capture) {
         mergeInto(b, i, j);
         b.removeAt(j); // 마지막 원소가 j 자리로 온다 → j를 증가시키지 않고 다시 검사
         merged = true;
