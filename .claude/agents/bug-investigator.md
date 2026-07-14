@@ -29,19 +29,22 @@ You find root causes before fixes are attempted. Your job is to prevent guess-an
 For a body that renders wrong or not at all:
 
 ```text
-bodies state -> <CelestialBody> props -> useFrame position copy -> mesh/model transform -> camera view
+engine.bodies (Float64Array, lib/sim/bodies.ts) -> Bodies.tsx useFrame reads posX/posY/posZ/radius/color
+  -> mesh.setMatrixAt/setColorAt -> instanceMatrix.needsUpdate -> camera view
 ```
 
 For a body that moves wrong (drifts, is flung away, vanishes):
 
 ```text
-initial position/velocity -> pairwise force -> velocityChanges -> velocity/position mutation -> bound cull
+spawn() initial position/velocity -> computeAccelerations() pairwise force -> integrate() leapfrog
+  -> resolveCollisions() merge -> sanitize() NaN/Infinity cull -> next substep()
 ```
 
 For UI that does not update:
 
 ```text
-useState in Universe -> prop -> useFrame closure -> did a re-render actually happen?
+useState in state/SimulationProvider.tsx -> useSimulation() context read in the DOM component
+  -> did it read the engine's Float64Array directly instead (it shouldn't)? -> did a re-render actually happen?
 ```
 
 For build and type failures:
@@ -52,11 +55,11 @@ first error -> owning file -> imports/types -> recent diff -> local pattern
 
 ## Standing Suspects
 
-- An object mutated in place while held in `useState` (React Compiler is enabled and may not observe it).
-- A stale closure in `useFrame` reading a captured prop instead of a ref.
-- Unbounded gravity at near-zero distance — the body is flung out and then culled; "it vanished" is the symptom, not the cause.
-- `NaN` in a position or velocity vector.
-- Frame-rate dependence via `dt`.
+- Body position/velocity/mass/radius assigned into `useState` or mirrored into a ref-held plain object — it must live only in `engine.bodies`' typed arrays.
+- A stale closure in `useFrame` reading a captured prop instead of `engine.bodies` or a ref.
+- A body "vanished": check for the `[sim] 오염된 천체 제거` console warning first — `SimulationEngine.sanitize()` removes it, not a distance-based cull (there isn't one). If warnings repeat continuously rather than once or twice, `SOFTENING` may be insufficient (design doc §4 flags this as the signal to act on).
+- `NaN`/`Infinity` in a position or velocity vector — spreads to all bodies within the same `computeAccelerations()` call before the next `sanitize()` catches it.
+- Frame-rate dependence: real `useFrame` delta is clamped (`MAX_FRAME_DT`) and run through the fixed `FIXED_DT` accumulator in `engine.step()`, not used raw.
 
 ## Output Protocol
 

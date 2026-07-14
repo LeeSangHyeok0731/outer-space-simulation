@@ -51,7 +51,7 @@ Add a scope only when it improves clarity:
 feat(simulation): 시간 배속 컨트롤 추가
 ```
 
-Scopes in this repository: `simulation` (physics/scene), `ui` (overlay panel), `app` (route/layout), `harness` (`.claude/**`), `config`.
+Scopes in this repository: `sim` (`lib/sim/` physics engine), `scene` (`components/scene/` R3F), `ui` (`components/ui/` overlay), `state` (`state/SimulationProvider.tsx`), `app` (route/layout), `harness` (`.claude/**`), `docs`, `config`.
 
 Keep each commit focused on one logical change. Do not mix source changes, formatting churn, and harness configuration unless they are part of the same requested task.
 

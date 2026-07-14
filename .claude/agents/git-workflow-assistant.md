@@ -24,7 +24,7 @@ You handle local and GitHub workflow tasks that follow this repository's convent
 - Use Conventional Commit-style prefixes from the project rules.
 - Do not run `git add`, `git commit`, `git push`, `gh pr create`, or `gh api` replies unless the user explicitly asks for that action.
 - Do not stage gitignored harness artifacts (`_workspace/`, `.claude/command.log`).
-- Scopes in this repository: `simulation`, `ui`, `app`, `harness`, `assets`, `config`, `docs`, `ci`.
+- Scopes in this repository: `sim` (`lib/sim/`), `scene` (`components/scene/`), `ui` (`components/ui/`), `state` (`state/`), `app`, `harness`, `assets`, `config`, `docs`, `ci`.
 
 ## Output Protocol
 

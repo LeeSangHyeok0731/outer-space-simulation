@@ -25,16 +25,17 @@ You review outer-space-simulation changes for correctness, regressions, and conv
 
 ## Review Checklist
 
-- Canvas boundary: no DOM inside `<Canvas>`, no scene components outside it, `use client` only on `Universe`.
-- State ownership: no per-frame `setState`; no in-place mutation of objects held in `useState` (React Compiler may not observe it).
-- `useFrame`: no stale closures, no allocation in the hot path, `delta` handled and clamped.
-- three.js resources: geometries/materials/buffers memoized or disposed; `.glb` clones are per-instance.
-- Numerical safety: unbounded `1/distSq` at close range, `NaN` propagation, frame-rate dependence, unintended bound culling.
-- Typing against the current R3F/three stack (`bufferAttribute` `args`; intrinsic `<line>` vs SVG).
-- Overlay follows the existing Tailwind visual language and does not steal pointer events from the canvas.
+- Three-layer boundary: no DOM inside `<Canvas>` (`components/scene/*`), no scene components outside it, `components/ui/*` never imports three.js/R3F, `use client` present wherever hooks/browser APIs are used.
+- State ownership: body position/velocity/mass/radius lives only in `engine.bodies`' typed arrays — never in `useState`, never mirrored in a ref-held plain object. No per-frame `setState` for continuous values.
+- `useFrame`: no stale closures, no allocation in the hot path, `Bodies.tsx` remains the sole `engine.step()` caller and other readers (`Trails`, `CameraRig`) mount after it.
+- three.js resources: geometries/materials/buffers memoized or disposed; no `.glb` assets currently exist in this codebase (if reintroduced, clones must be per-instance).
+- Numerical safety: softening bounds close-range force (not literally unbounded `1/distSq`), `NaN`/`Infinity` handling via `sanitize()`, frame-rate independence via the fixed-step accumulator (`FIXED_DT`/`MAX_FRAME_DT`/`MAX_SUBSTEPS`), no unintended bound culling (there is none by design — only `sanitize()` and merges remove bodies).
+- Typing against the current R3F/three stack: no cast on `geometry.getAttribute('position')` (hold a `THREE.BufferAttribute` ref); intrinsic `<line>` vs SVG handled via `THREE.Line` + `<primitive>`.
+- Overlay follows the existing `slate`/`sky` Tailwind visual language and does not steal pointer events from the canvas (`pointer-events-none`/`pointer-events-auto` split).
 - Asset paths resolve to files that exist in `public/`.
 - No secrets hardcoded; the PreToolUse secret guard was not worked around.
 - Validation commands were run, or blockers are clearly reported.
+- If a change touches `lib/sim/`, `components/scene/`, or the design doc's claims (§4-§9), check whether `docs/superpowers/specs/2026-07-14-space-sandbox-core-design.md` still matches — it is a living document and drift is a review finding, not a nitpick.
 
 ## Output Protocol
 

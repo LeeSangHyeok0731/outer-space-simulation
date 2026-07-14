@@ -27,22 +27,23 @@ You verify that outer-space-simulation changes are coherent. Your focus is not o
 
 ## Coherence Checklist
 
-- No DOM elements inside `<Canvas>`; no scene components outside it; `use client` only on `Universe`.
-- No per-frame `setState`; nothing mutated in place while held in `useState` (React Compiler will not observe it).
-- `useFrame` reads mutable data through refs, not stale captured props.
-- No new allocations in the per-frame hot path; geometries and buffers memoized on real dependencies.
-- Numerical safety: near-zero distance in the gravity term, `NaN` propagation, `dt` clamping, unintended bound culling.
-- Types match the current R3F/three stack (`bufferAttribute` `args`; no intrinsic `<line>`).
-- Overlay: controls readable, text fits, canvas still receives pointer drags.
+- No DOM elements inside `<Canvas>`; no `components/scene/*` rendered outside it; `use client` present on every file that needs it (there is no single root component that centralizes it).
+- Body position/velocity/mass/radius never enters `useState`, and never sits in a ref holding a plain mirrored object — it lives only in `engine.bodies`' typed arrays.
+- No per-frame `setState` for continuous values (`Bodies.tsx` samples display stats at 10Hz instead).
+- `useFrame` reads mutable data through `engine.bodies` or a ref, not stale captured props.
+- No new allocations in the per-frame hot path; geometries, materials, and buffers memoized on real dependencies.
+- Numerical safety: softening (`SOFTENING` in `lib/sim/units.ts`) bounds the near-zero-distance force; `sanitize()` in `lib/sim/engine.ts` catches `NaN`/`Infinity` at each substep boundary (see its documented gap in the design doc §4); `dt` is clamped (`MAX_FRAME_DT`) and substep count is capped (`MAX_SUBSTEPS`). There is no bound culling in this codebase — a vanished body was removed by `sanitize()` or a merge, not a distance cull.
+- Types match the current R3F/three stack: no casting `geometry.getAttribute('position')` (hold your own `THREE.BufferAttribute` ref instead); no intrinsic `<line>` (build `THREE.Line` + `<primitive>`).
+- Overlay (`components/ui/Overlay.tsx` and its panels): controls readable, text fits, canvas still receives pointer drags (`pointer-events-none` wrapper, `pointer-events-auto` panels).
 
 ## Runtime Check
 
 When behavior or rendering changed:
 
 1. Run `pnpm dev`.
-2. Confirm the default sun/earth system renders and orbits.
-3. Add bodies ("+20 Planets") and confirm the frame rate stays workable.
-4. Exercise the specific changed path (grid resolution, merge/black-hole promotion, context menu, camera limits).
+2. Confirm the starter system (1 star + 3 planets + a 60-body asteroid belt, from `lib/sim/scenes.ts`) renders and orbits stably.
+3. Left-drag from empty space to throw new bodies (watch the trajectory preview), throw 200+ and confirm the frame rate stays at or above 30fps and bodies merge into larger clumps over time.
+4. Exercise the specific changed path (throw/select interaction, camera follow, trails, control panel, spawn panel).
 
 ## Input Protocol
 
