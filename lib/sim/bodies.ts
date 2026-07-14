@@ -1,0 +1,135 @@
+import { BodyType, MAX_BODIES } from './units';
+
+export interface BodyInit {
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  mass: number;
+  radius: number;
+  type?: number;
+  color?: [number, number, number];
+}
+
+/**
+ * 천체 상태를 SoA(Structure of Arrays)로 담는 고정 크기 버퍼.
+ * 버퍼는 생성 시 한 번만 할당되며, 이후 매 프레임 할당이 발생하지 않는다.
+ */
+export class BodyBuffer {
+  readonly capacity: number;
+  count = 0;
+
+  readonly posX: Float64Array;
+  readonly posY: Float64Array;
+  readonly posZ: Float64Array;
+  readonly velX: Float64Array;
+  readonly velY: Float64Array;
+  readonly velZ: Float64Array;
+  readonly accX: Float64Array;
+  readonly accY: Float64Array;
+  readonly accZ: Float64Array;
+  readonly mass: Float64Array;
+  readonly radius: Float64Array;
+  readonly type: Uint8Array;
+  readonly id: Int32Array;
+  readonly colR: Float32Array;
+  readonly colG: Float32Array;
+  readonly colB: Float32Array;
+
+  private nextId = 1;
+
+  constructor(capacity: number = MAX_BODIES) {
+    this.capacity = capacity;
+    const f = () => new Float64Array(capacity);
+    this.posX = f();
+    this.posY = f();
+    this.posZ = f();
+    this.velX = f();
+    this.velY = f();
+    this.velZ = f();
+    this.accX = f();
+    this.accY = f();
+    this.accZ = f();
+    this.mass = f();
+    this.radius = f();
+    this.type = new Uint8Array(capacity);
+    this.id = new Int32Array(capacity);
+    this.colR = new Float32Array(capacity);
+    this.colG = new Float32Array(capacity);
+    this.colB = new Float32Array(capacity);
+  }
+
+  /** @returns 새 천체의 id. 용량이 가득 찼으면 -1. */
+  add(b: BodyInit): number {
+    if (this.count >= this.capacity) return -1;
+    const i = this.count++;
+    const id = this.nextId++;
+
+    this.posX[i] = b.x;
+    this.posY[i] = b.y;
+    this.posZ[i] = b.z;
+    this.velX[i] = b.vx;
+    this.velY[i] = b.vy;
+    this.velZ[i] = b.vz;
+    this.accX[i] = 0;
+    this.accY[i] = 0;
+    this.accZ[i] = 0;
+    this.mass[i] = b.mass;
+    this.radius[i] = b.radius;
+    this.type[i] = b.type ?? BodyType.NORMAL;
+    this.id[i] = id;
+
+    const [r, g, bl] = b.color ?? [1, 1, 1];
+    this.colR[i] = r;
+    this.colG[i] = g;
+    this.colB[i] = bl;
+
+    return id;
+  }
+
+  /** 마지막 원소를 i번 자리로 옮겨 O(1)로 제거한다. 순서는 보존되지 않는다. */
+  removeAt(i: number): void {
+    const last = this.count - 1;
+    if (i < 0 || i > last) return;
+    if (i !== last) {
+      this.posX[i] = this.posX[last];
+      this.posY[i] = this.posY[last];
+      this.posZ[i] = this.posZ[last];
+      this.velX[i] = this.velX[last];
+      this.velY[i] = this.velY[last];
+      this.velZ[i] = this.velZ[last];
+      this.accX[i] = this.accX[last];
+      this.accY[i] = this.accY[last];
+      this.accZ[i] = this.accZ[last];
+      this.mass[i] = this.mass[last];
+      this.radius[i] = this.radius[last];
+      this.type[i] = this.type[last];
+      this.id[i] = this.id[last];
+      this.colR[i] = this.colR[last];
+      this.colG[i] = this.colG[last];
+      this.colB[i] = this.colB[last];
+    }
+    this.count = last;
+  }
+
+  removeById(id: number): boolean {
+    const i = this.indexOfId(id);
+    if (i === -1) return false;
+    this.removeAt(i);
+    return true;
+  }
+
+  /** 선형 탐색. count ≤ 512이고 매 프레임 호출되지 않으므로 충분하다. */
+  indexOfId(id: number): number {
+    for (let i = 0; i < this.count; i++) {
+      if (this.id[i] === id) return i;
+    }
+    return -1;
+  }
+
+  clear(): void {
+    this.count = 0;
+  }
+}
