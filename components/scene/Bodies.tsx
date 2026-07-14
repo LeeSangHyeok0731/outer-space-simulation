@@ -39,6 +39,10 @@ export default function Bodies() {
 
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    // setMatrixAt은 boundingSphere를 무효화하지 않는다. frustumCulled={false}라 렌더러도
+    // 건드리지 않으므로, 비워두지 않으면 첫 클릭 때 계산된 구가 영구히 고정되어
+    // 그 밖으로 나간 천체는 레이캐스트에 잡히지 않는다 (= 클릭해도 선택되지 않는다).
+    mesh.boundingSphere = null;
 
     // 표시용 수치는 매 프레임이 아니라 10Hz로만 React에 밀어 올린다.
     const instFps = delta > 0 ? 1 / delta : 0;
