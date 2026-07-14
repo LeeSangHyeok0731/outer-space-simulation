@@ -1,6 +1,7 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
+import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import Bodies from './Bodies';
 import CameraRig from './CameraRig';
 import SpawnController from './SpawnController';
@@ -26,6 +27,9 @@ export default function SpaceCanvas() {
       <Trails />
       <CameraRig />
       <SpawnController />
+      <EffectComposer>
+        <Bloom intensity={1.1} luminanceThreshold={0.25} luminanceSmoothing={0.3} mipmapBlur />
+      </EffectComposer>
     </Canvas>
   );
 }
