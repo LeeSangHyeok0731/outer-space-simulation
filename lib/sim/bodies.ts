@@ -121,7 +121,11 @@ export class BodyBuffer {
     return true;
   }
 
-  /** 선형 탐색. count ≤ 512이고 매 프레임 호출되지 않으므로 충분하다. */
+  /**
+   * 선형 탐색. `CameraRig`가 선택된 천체를 추적하는 동안 매 프레임, `Trails`가
+   * 추적 중인 천체마다 호출한다 — 이제 매 프레임 호출된다. 그래도 count ≤ 512로
+   * 상한이 있어, 프레임당 O(N²)인 N-body 힘 계산에 비하면 무시할 수준이다.
+   */
   indexOfId(id: number): number {
     for (let i = 0; i < this.count; i++) {
       if (this.id[i] === id) return i;

@@ -59,6 +59,9 @@ export function computeAccelerations(b: BodyBuffer): void {
  *
  * 전제: 호출 시 acc가 현재 위치 기준으로 유효해야 한다.
  * 천체를 추가/제거/병합한 뒤에는 반드시 computeAccelerations를 먼저 부를 것.
+ * 종료 후: drift 직후 내부에서 computeAccelerations를 재호출하므로, 반환 시점에도
+ * acc는 갱신된 위치 기준으로 유효한 상태로 남는다. 엔진은 다음 substep() 호출이
+ * 이 상태를 그대로 물려받는다는 것에 의존한다.
  */
 export function integrate(b: BodyBuffer, dt: number): void {
   const n = b.count;
