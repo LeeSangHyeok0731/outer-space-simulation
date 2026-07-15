@@ -128,3 +128,14 @@ export function timeDilationAt(rs: number, r: number): number {
   if (r <= rs) return 0;
   return Math.sqrt(1 - rs / r);
 }
+
+/**
+ * 질량을 스치는 빛의 휘어짐 각 근사. 충돌 파라미터 b(빛이 블랙홀 중심을 스치는 최소
+ * 거리)에서 α = 2·r_s/b. 약한장(b ≫ r_s) 근사이며, 이 프로젝트의 다른 물리 상수처럼
+ * 교육적으로 옳은 스케일을 준다. b가 2배면 휘어짐이 절반, 질량이 크면 더 크게 휜다.
+ * b ≤ 0은 0으로 막아 0 나눗셈을 방지한다(물리적으로 b는 양수).
+ */
+export function lensDeflection(rs: number, b: number): number {
+  if (b <= 0) return 0;
+  return (2 * rs) / b;
+}
