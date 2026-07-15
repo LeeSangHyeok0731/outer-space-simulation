@@ -187,6 +187,29 @@ describe('applyHawking (호킹 증발)', () => {
     expect(events.payload[0]).toBeCloseTo(0.02, 10); // 소멸 직전 질량
   });
 
+  it('여러 블랙홀 중 소멸하는 쪽이 마지막이 아니어도 이벤트 위치는 제거 전 좌표다 (swap-remove 안전성)', () => {
+    // index 0 = 곧 사라질 것(소멸), index 1 = 살아남아 index 0으로 swap-remove될 것.
+    // applyHawking은 뒤에서부터 돌기 때문에 index 1(생존)을 먼저 지나치고 index 0(소멸)에서
+    // removeAt(0)을 호출한다 — 이때 last(=1)의 데이터가 0으로 복사되는 실제 swap이 일어난다.
+    // 이벤트 위치를 removeAt 이후에 읽으면 생존 천체의 좌표(0,0,0)가 찍힌다.
+    const events = new EventBuffer(8);
+    const b = new BodyBuffer(4);
+    b.add(make({ x: 7, y: -3, z: 2, mass: 0.02, radius: 1 })); // 소멸할 천체
+    b.add(make({ x: 0, y: 0, z: 0, mass: COLLAPSE_MASS, radius: 1 })); // 생존할 천체
+    collapseAt(b, 0);
+    collapseAt(b, 1);
+
+    expect(applyHawking(b, 1, events)).toBe(true);
+
+    expect(b.count).toBe(1);
+    expect(events.count).toBe(1);
+    expect(events.kind[0]).toBe(EventKind.EVAPORATION);
+    expect(events.x[0]).toBe(7);
+    expect(events.y[0]).toBe(-3);
+    expect(events.z[0]).toBe(2);
+    expect(events.payload[0]).toBeCloseTo(0.02, 10);
+  });
+
   it('질량이 줄기만 할 때는 이벤트를 내지 않는다', () => {
     const events = new EventBuffer(8);
     const b = new BodyBuffer(4);
