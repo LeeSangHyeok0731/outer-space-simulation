@@ -82,7 +82,7 @@ computeAccelerations → integrate → resolveTidalDisruption → resolveCollisi
 ## 8. 파일과 테스트
 
 **수정:**
-- `lib/sim/units.ts` — `TIDAL_STRENGTH`, `TIDAL_FRAGMENTS`, `tidalRadius(rBody, mBody, mBH)`, `BodyType.DEBRIS = 3`.
+- `lib/sim/units.ts` — `TIDAL_STRENGTH`, `TIDAL_FRAGMENTS`, `tidalRadius(mBody, mBH)`(물리 반지름을 질량에서 계산), `BodyType.DEBRIS = 3`.
 - `lib/sim/events.ts` — `EventKind.TIDAL = 2`.
 - `lib/sim/engine.ts` — `substep`에서 `resolveCollisions` 앞에 `resolveTidalDisruption` 호출, 반환 true면 `accDirty`.
 - `components/scene/EffectsController.tsx` — TIDAL 이벤트 → 방사 섬광 줄기.
