@@ -6,6 +6,7 @@ import AccretionDisks from './AccretionDisks';
 import Bodies from './Bodies';
 import CameraRig from './CameraRig';
 import EffectsController from './EffectsController';
+import GravitationalLensing from './GravitationalLensing';
 import PhotonSpheres from './PhotonSpheres';
 import PinMarkers from './PinMarkers';
 import SpawnController from './SpawnController';
@@ -36,6 +37,7 @@ export default function SpaceCanvas() {
       <CameraRig />
       <SpawnController />
       <EffectComposer>
+        <GravitationalLensing />
         <Bloom intensity={1.1} luminanceThreshold={0.25} luminanceSmoothing={0.3} mipmapBlur />
       </EffectComposer>
     </Canvas>

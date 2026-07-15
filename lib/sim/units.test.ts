@@ -5,6 +5,7 @@ import {
   COLLAPSE_MASS,
   iscoRadius,
   KICK_STRENGTH,
+  lensDeflection,
   mergeKickSpeed,
   MIN_RADIUS,
   PHOTON_SPHERE_FACTOR,
@@ -116,5 +117,29 @@ describe('중력 시간 지연 (timeDilationAt)', () => {
 
   it('PHOTON_SPHERE_FACTOR는 1.5다', () => {
     expect(PHOTON_SPHERE_FACTOR).toBe(1.5);
+  });
+});
+
+describe('lensDeflection', () => {
+  it('b = r_s 이면 휘어짐 각이 2다', () => {
+    expect(lensDeflection(10, 10)).toBeCloseTo(2);
+  });
+
+  it('b = 2·r_s 이면 휘어짐 각이 1이다 (거리 2배 → 절반)', () => {
+    expect(lensDeflection(10, 20)).toBeCloseTo(1);
+  });
+
+  it('b 가 아주 크면 휘어짐 각이 0에 가깝다', () => {
+    expect(lensDeflection(10, 1000)).toBeCloseTo(0.02, 3);
+    expect(lensDeflection(10, 100000)).toBeLessThan(0.001);
+  });
+
+  it('같은 b 에서 r_s(질량)가 클수록 더 크게 휜다', () => {
+    expect(lensDeflection(20, 50)).toBeGreaterThan(lensDeflection(10, 50));
+  });
+
+  it('b <= 0 이면 0을 반환한다 (0 나눗셈 방지)', () => {
+    expect(lensDeflection(10, 0)).toBe(0);
+    expect(lensDeflection(10, -5)).toBe(0);
   });
 });
