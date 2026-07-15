@@ -7,7 +7,9 @@ import {
   COLLAPSE_MASS,
   HAWKING_K,
   iscoRadius,
+  PHOTON_SPHERE_FACTOR,
   schwarzschildRadius,
+  timeDilationAt,
 } from '@/lib/sim/units';
 
 interface Info {
@@ -16,7 +18,14 @@ interface Info {
   speed: number;
   pinned: boolean;
   blackHole: boolean;
+  dilation: number | null;
 }
+
+/**
+ * 일반 천체 카드에 시간 지연 줄을 띄우는 임계. f가 이 값 미만(=1% 넘게 느려질 때)일 때만
+ * 표시한다. 멀어서 밍밍한 "0.998×"로 카드를 어지럽히지 않는다.
+ */
+const TIME_DILATION_NOTICEABLE = 0.99;
 
 /**
  * 호킹 증발까지 남은 시뮬레이션 시간. dM/dt = -K/M² 를 적분하면 t = M³ / (3K).
@@ -51,12 +60,31 @@ export default function BodyCard() {
         setSelectedId(null); // 병합되어 사라졌다
         return;
       }
+      // 일반 천체가 블랙홀 근처에서 겪는 시간 지연. 가장 강한 지연(최소 f)을 주는
+      // 블랙홀을 찾아, 눈에 띌 때(f < 임계)만 값을 둔다. 블랙홀 자신은 카드에서
+      // 상수 기준 값을 따로 보여주므로 여기선 null이다.
+      let dilation: number | null = null;
+      if (b.type[i] !== BodyType.BLACK_HOLE) {
+        let minF = 1;
+        for (let k = 0; k < b.count; k++) {
+          if (b.type[k] !== BodyType.BLACK_HOLE) continue;
+          const dx = b.posX[i] - b.posX[k];
+          const dy = b.posY[i] - b.posY[k];
+          const dz = b.posZ[i] - b.posZ[k];
+          const r = Math.hypot(dx, dy, dz);
+          const f = timeDilationAt(schwarzschildRadius(b.mass[k]), r);
+          if (f < minF) minF = f;
+        }
+        if (minF < TIME_DILATION_NOTICEABLE) dilation = minF;
+      }
+
       setInfo({
         mass: b.mass[i],
         radius: b.radius[i],
         speed: Math.hypot(b.velX[i], b.velY[i], b.velZ[i]),
         pinned: b.pinned[i] === 1,
         blackHole: b.type[i] === BodyType.BLACK_HOLE,
+        dilation,
       });
     };
 
@@ -109,7 +137,25 @@ export default function BodyCard() {
               <dt className="text-slate-400">증발까지</dt>
               <dd>{formatEvaporation(info.mass)}</dd>
             </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-slate-400">시간 지연</dt>
+              <dd className="text-right">
+                광자 구{' '}
+                {timeDilationAt(
+                  schwarzschildRadius(info.mass),
+                  PHOTON_SPHERE_FACTOR * schwarzschildRadius(info.mass),
+                ).toFixed(2)}
+                × · ISCO{' '}
+                {timeDilationAt(schwarzschildRadius(info.mass), iscoRadius(info.mass)).toFixed(2)}×
+              </dd>
+            </div>
           </>
+        )}
+        {!info.blackHole && info.dilation !== null && (
+          <div className="flex justify-between">
+            <dt className="text-violet-300/70">시간 지연</dt>
+            <dd className="text-violet-200">{info.dilation.toFixed(2)}×</dd>
+          </div>
         )}
       </dl>
 
