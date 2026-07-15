@@ -16,12 +16,18 @@ const STRENGTH_SCALE = 0.35;
 
 // mainUv: 각 렌즈 중심으로 UV를 당겨 배경을 휘게 한다. 여러 렌즈는 변위를 누적한다.
 // 화면비 보정(d.x *= uAspect)으로 원형 왜곡을 유지한다.
+//
+// 영향 반경: 왜곡은 사건의 지평선 반지름의 INFLUENCE_RADII배(= 지름의 3배)까지만 미치고
+// 그 밖은 0이다. 경계에서 smoothstep으로 부드럽게 감쇠해, 화면 전체로 새지 않고 블랙홀
+// 근처로 국소화된다. INFLUENCE_RADII는 시각 조정 대상(스펙 §7).
 const fragmentShader = /* glsl */ `
 uniform int uLensCount;
 uniform vec2 uCenters[MAX_LENSES];
 uniform float uRadii[MAX_LENSES];
 uniform float uStrength[MAX_LENSES];
 uniform float uAspect;
+
+const float INFLUENCE_RADII = 6.0;
 
 void mainUv(inout vec2 uv) {
   for (int i = 0; i < MAX_LENSES; i++) {
@@ -30,8 +36,12 @@ void mainUv(inout vec2 uv) {
     d.x *= uAspect;
     float dist = length(d);
     if (dist < 1e-4) continue;
+    float influence = INFLUENCE_RADII * uRadii[i];
+    if (dist >= influence) continue;   // 영향 반경(지름의 3배) 밖은 왜곡 없음
+    // 경계에서 0으로 부드럽게 감쇠. 중심 부근은 거의 1이라 강한 렌즈 형태를 유지한다.
+    float falloff = 1.0 - smoothstep(0.0, influence, dist);
     // 가까울수록 강하게 당기되, 지평선 반지름 안에서는 발산하지 않도록 클램프.
-    float pull = uStrength[i] / max(dist, uRadii[i]);
+    float pull = uStrength[i] / max(dist, uRadii[i]) * falloff;
     vec2 dir = d / dist;   // 중심에서 바깥 방향(화면비 공간)
     dir.x /= uAspect;      // uv 공간으로 복원
     uv -= dir * pull;      // 샘플 좌표를 중심 쪽으로 당김
