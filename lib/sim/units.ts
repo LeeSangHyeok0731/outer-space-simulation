@@ -155,11 +155,17 @@ export const TIDAL_FRAGMENTS = 6;
  * 조석 파괴 반지름. `r_t = TIDAL_STRENGTH · R_body · ∛(M_bh / m_body)`
  *
  * 블랙홀의 조석력이 천체의 자체 중력을 이기는 경계다. 이 안쪽에서 천체가 찢어진다.
- * 실제 공식(계수 흡수)을 유지하되 TIDAL_STRENGTH로 스케일만 맞춘다. 밀도가 일정하면
- * R_body ∝ ∛m_body라 질량비가 상쇄되어 사실상 블랙홀 질량에만 의존하는 껍질이 된다.
- * m_body ≤ 0은 0으로 막는다(물리적으로 양수).
+ * 실제 공식(계수 흡수)을 유지하되 TIDAL_STRENGTH로 스케일만 맞춘다.
+ *
+ * R_body는 표시용 하한(MIN_RADIUS)이 걸린 `radiusFromMass`가 아니라 하한 없는 **물리
+ * 반지름** `∛(3m/4πρ)`를 질량에서 직접 계산해 쓴다 — 조석력은 실제 크기에 걸리지,
+ * 화면에서 안 보일까 봐 부풀린 크기에 걸리지 않는다. 이래야 밀도 일정 가정에서
+ * R_body ∝ ∛m_body의 상쇄가 정확히 성립해, r_t가 사실상 블랙홀 질량에만 의존하는
+ * 껍질(질량 무관)이 된다. 하한을 쓰면 극소질량 천체의 r_t가 비정상적으로 부풀어
+ * 멀리서도 찢긴다. m_body ≤ 0은 0으로 막는다(물리적으로 양수).
  */
-export function tidalRadius(rBody: number, mBody: number, mBH: number): number {
+export function tidalRadius(mBody: number, mBH: number): number {
   if (mBody <= 0) return 0;
+  const rBody = Math.cbrt((3 * mBody) / (4 * Math.PI * DENSITY));
   return TIDAL_STRENGTH * rBody * Math.cbrt(mBH / mBody);
 }

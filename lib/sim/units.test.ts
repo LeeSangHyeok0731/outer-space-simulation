@@ -3,6 +3,7 @@ import {
   BODY_PRESETS,
   C,
   COLLAPSE_MASS,
+  DENSITY,
   iscoRadius,
   KICK_STRENGTH,
   lensDeflection,
@@ -147,23 +148,29 @@ describe('lensDeflection', () => {
 });
 
 describe('tidalRadius', () => {
-  it('공식대로 계산한다: TIDAL_STRENGTH · rBody · ∛(mBH/mBody)', () => {
-    const expected = TIDAL_STRENGTH * 2 * Math.cbrt(1000 / 8);
-    expect(tidalRadius(2, 8, 1000)).toBeCloseTo(expected);
+  it('공식대로 계산한다: TIDAL_STRENGTH · ∛(3·mBody/4πρ) · ∛(mBH/mBody)', () => {
+    const rBody = Math.cbrt((3 * 8) / (4 * Math.PI * DENSITY));
+    const expected = TIDAL_STRENGTH * rBody * Math.cbrt(1000 / 8);
+    expect(tidalRadius(8, 1000)).toBeCloseTo(expected);
   });
 
   it('mBH가 클수록 조석 반지름이 크다', () => {
-    expect(tidalRadius(2, 8, 5000)).toBeGreaterThan(tidalRadius(2, 8, 1000));
+    expect(tidalRadius(8, 5000)).toBeGreaterThan(tidalRadius(8, 1000));
   });
 
   it('mBody ≤ 0이면 0을 반환한다', () => {
-    expect(tidalRadius(2, 0, 1000)).toBe(0);
-    expect(tidalRadius(2, -5, 1000)).toBe(0);
+    expect(tidalRadius(0, 1000)).toBe(0);
+    expect(tidalRadius(-5, 1000)).toBe(0);
   });
 
   it('전형적 설정에서 조석 반지름이 ISCO보다 바깥이다 (찢을 껍질이 존재)', () => {
-    // 질량 3000 블랙홀 + 질량 20 행성(반지름 radiusFromMass(20)).
-    const rBody = radiusFromMass(20);
-    expect(tidalRadius(rBody, 20, 3000)).toBeGreaterThan(iscoRadius(3000));
+    // 질량 3000 블랙홀 + 질량 20 행성.
+    expect(tidalRadius(20, 3000)).toBeGreaterThan(iscoRadius(3000));
+  });
+
+  it('물리 반지름을 써서 몸체 질량과 무관하다 (밀도 일정 껍질)', () => {
+    // 밀도 일정이면 r_t는 블랙홀 질량에만 의존해야 한다. MIN_RADIUS 하한에 걸릴
+    // 극소질량(1e-4)도 정상 질량(20)과 같은 r_t를 준다 — 하한이 상쇄를 깨지 않는다.
+    expect(tidalRadius(20, 3000)).toBeCloseTo(tidalRadius(1e-4, 3000));
   });
 });

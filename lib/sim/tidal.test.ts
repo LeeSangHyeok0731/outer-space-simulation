@@ -84,7 +84,7 @@ describe('resolveTidalDisruption', () => {
     b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 100000, radius: 320, type: BodyType.BLACK_HOLE });
     const rBody = radiusFromMass(20);
     // r_t < ISCO 임을 전제로 한 시나리오.
-    expect(tidalRadius(rBody, 20, 100000)).toBeLessThan(iscoRadius(100000));
+    expect(tidalRadius(20, 100000)).toBeLessThan(iscoRadius(100000));
     b.add({ x: 100, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 20, radius: rBody, type: BodyType.NORMAL });
 
     const changed = resolveTidalDisruption(b);

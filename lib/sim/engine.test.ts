@@ -249,10 +249,7 @@ describe('SimulationEngine 블랙홀', () => {
 
     const r = 200; // ISCO(=96)보다 한참 밖
     const v = Math.sqrt((G * bhMass) / r);
-    // mass는 MIN_RADIUS 클램프에 걸리지 않을 만큼은 커야 한다: 조석 반지름 r_t는
-    // R_body ∝ ∛m 상쇄로 몸체 질량과 무관하게 일정한데(lib/sim/tidal.ts 참고),
-    // 클램프에 걸린 극소질량은 그 상쇄를 깨 r_t를 비정상적으로 부풀린다.
-    const sat = e.spawn({ position: [r, 0, 0], velocity: [0, 0, v], mass: 1 });
+    const sat = e.spawn({ position: [r, 0, 0], velocity: [0, 0, v], mass: 1e-3 });
 
     for (let i = 0; i < 10 * 60; i++) e.step(1 / 60);
 

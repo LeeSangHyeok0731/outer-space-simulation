@@ -31,7 +31,7 @@ export function resolveTidalDisruption(b: BodyBuffer, events?: EventBuffer): boo
     let bh = -1;
     for (let j = 0; j < b.count; j++) {
       if (b.type[j] !== BodyType.BLACK_HOLE) continue;
-      const rt = tidalRadius(b.radius[i], b.mass[i], b.mass[j]);
+      const rt = tidalRadius(b.mass[i], b.mass[j]);
       if (rt <= iscoRadius(b.mass[j])) continue; // 찢을 껍질이 없다 — 통째 흡수하도록 둔다
       const dx = b.posX[i] - b.posX[j];
       const dy = b.posY[i] - b.posY[j];
