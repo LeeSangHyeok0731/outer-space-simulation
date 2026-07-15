@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { collapseAt } from './blackhole';
 import { BodyBuffer } from './bodies';
 import { resolveCollisions } from './collisions';
+import { EventBuffer, EventKind } from './events';
 import { BodyType, G, iscoRadius, schwarzschildRadius } from './units';
 
 describe('resolveCollisions', () => {
@@ -257,5 +258,106 @@ describe('블랙홀의 흡수', () => {
     expect(b.velX[0]).toBe(0);
     expect(b.pinned[0]).toBe(1);
     expect(b.type[0]).toBe(BodyType.BLACK_HOLE);
+  });
+});
+
+describe('블랙홀 병합 킥과 MERGE 이벤트', () => {
+  it('블랙홀 쌍성 병합은 운동량 보존 속도 위에 킥을 더한다', () => {
+    const events = new EventBuffer(8);
+    const b = new BodyBuffer(4);
+    // 질량이 다른 두 블랙홀이 서로 스치며 x축으로 상대운동한다.
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 4000, radius: 1 });
+    b.add({ x: 3, y: 0, z: 0, vx: 6, vy: 0, vz: 0, mass: 1000, radius: 1 });
+    collapseAt(b, 0);
+    collapseAt(b, 1);
+
+    // 순수 운동량 보존 속도 (킥이 없다면 이것)
+    const momentumVx = (4000 * 0 + 1000 * 6) / 5000; // = 1.2
+
+    resolveCollisions(b, events);
+
+    expect(b.count).toBe(1);
+    // 상대속도가 +x이므로 킥도 +x. 실제 속도는 운동량 속도보다 커야 한다.
+    expect(b.velX[0]).toBeGreaterThan(momentumVx);
+  });
+
+  it('같은 질량 블랙홀 병합은 킥이 없다 (운동량 속도 그대로)', () => {
+    const events = new EventBuffer(8);
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 4000, radius: 1 });
+    b.add({ x: 3, y: 0, z: 0, vx: 6, vy: 0, vz: 0, mass: 4000, radius: 1 });
+    collapseAt(b, 0);
+    collapseAt(b, 1);
+
+    const momentumVx = (4000 * 0 + 4000 * 6) / 8000; // = 3
+
+    resolveCollisions(b, events);
+
+    expect(b.velX[0]).toBeCloseTo(momentumVx, 10); // 킥 0
+  });
+
+  it('킥 방향은 병합 직전 상대속도 방향이다', () => {
+    const events = new EventBuffer(8);
+    const b = new BodyBuffer(4);
+    // 상대속도를 +z로 준다. 킥도 +z여야 한다(x·y는 운동량대로).
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 4000, radius: 1 });
+    b.add({ x: 3, y: 0, z: 0, vx: 0, vy: 0, vz: 10, mass: 1000, radius: 1 });
+    collapseAt(b, 0);
+    collapseAt(b, 1);
+
+    const momentumVz = (1000 * 10) / 5000; // = 2
+
+    resolveCollisions(b, events);
+
+    expect(b.velZ[0]).toBeGreaterThan(momentumVz); // +z 킥
+    expect(b.velX[0]).toBeCloseTo(0, 10); // 다른 축은 킥 없음
+    expect(b.velY[0]).toBeCloseTo(0, 10);
+  });
+
+  it('고정된 블랙홀은 킥에도 안 밀린다', () => {
+    const events = new EventBuffer(8);
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 4000, radius: 1, pinned: true });
+    b.add({ x: 3, y: 0, z: 0, vx: 6, vy: 0, vz: 0, mass: 1000, radius: 1 });
+    collapseAt(b, 0);
+    collapseAt(b, 1);
+
+    resolveCollisions(b, events);
+
+    expect(b.count).toBe(1);
+    expect(b.velX[0]).toBe(0); // pinned가 킥을 이긴다
+    expect(b.velY[0]).toBe(0);
+    expect(b.velZ[0]).toBe(0);
+  });
+
+  it('블랙홀 쌍성 병합은 MERGE 이벤트를 잔여 질량·위치로 방출한다', () => {
+    const events = new EventBuffer(8);
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 4000, radius: 1 });
+    b.add({ x: 3, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 4000, radius: 1 });
+    collapseAt(b, 0);
+    collapseAt(b, 1);
+
+    resolveCollisions(b, events);
+
+    expect(events.count).toBe(1);
+    expect(events.kind[0]).toBe(EventKind.MERGE);
+    expect(events.payload[0]).toBeCloseTo(8000, 6); // 잔여 질량
+    expect(events.x[0]).toBeCloseTo(1.5, 6); // 질량중심(같은 질량이라 중간)
+  });
+
+  it('블랙홀이 일반 천체를 삼킬 때는 킥도 MERGE 이벤트도 없다', () => {
+    const events = new EventBuffer(8);
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 5000, radius: 1 });
+    collapseAt(b, 0);
+    b.add({ x: iscoRadius(5000) * 0.5, y: 0, z: 0, vx: 0, vy: 0, vz: 8, mass: 1, radius: 0.3 });
+
+    const momentumVz = (1 * 8) / 5001;
+
+    resolveCollisions(b, events);
+
+    expect(events.count).toBe(0); // MERGE 이벤트 없음
+    expect(b.velZ[0]).toBeCloseTo(momentumVz, 10); // 킥 없음(운동량대로)
   });
 });

@@ -1,5 +1,6 @@
 import type { BodyBuffer } from './bodies';
-import { BodyType, iscoRadius, schwarzschildRadius } from './units';
+import { EventKind, type EventBuffer } from './events';
+import { BodyType, iscoRadius, mergeKickSpeed, schwarzschildRadius } from './units';
 
 /**
  * 두 천체가 합쳐지는 거리.
@@ -35,11 +36,16 @@ function captureDistance(b: BodyBuffer, i: number, j: number): number {
  * 그 고정된 위치에 그대로 머물고 속도 0으로 계속 고정 상태로 남는다. 질량만 불어난다.
  * '닻'으로 쓰려고 고정한 항성이 소행성 하나 맞았다고 풀려버리면 기능 자체가 무의미해진다.
  */
-function mergeInto(b: BodyBuffer, i: number, j: number): void {
+function mergeInto(b: BodyBuffer, i: number, j: number, events?: EventBuffer): void {
   const m1 = b.mass[i];
   const m2 = b.mass[j];
   const m = m1 + m2;
   const inv = 1 / m;
+
+  const iBH = b.type[i] === BodyType.BLACK_HOLE;
+  const jBH = b.type[j] === BodyType.BLACK_HOLE;
+  const anyBH = iBH || jBH;
+  const bothBH = iBH && jBH;
 
   const iPinned = b.pinned[i] === 1;
   const jPinned = b.pinned[j] === 1;
@@ -53,8 +59,25 @@ function mergeInto(b: BodyBuffer, i: number, j: number): void {
   let py = (m1 * b.posY[i] + m2 * b.posY[j]) * inv;
   let pz = (m1 * b.posZ[i] + m2 * b.posZ[j]) * inv;
 
+  // 블랙홀 쌍성 병합의 중력파 반동(킥). 운동량 보존 속도 위에 더한다 —
+  // 중력파가 운동량을 실어 나르므로 잔여 블랙홀은 반동한다(운동량은 깨진다, 그게 맞다).
+  // 방향은 병합 직전 상대속도(궤도면 방향)로 근사한다. 스핀이 없어 방향만 근사이고,
+  // 크기 법칙(mergeKickSpeed, 피치트)은 근사가 아니라 실제 물리다.
+  if (bothBH) {
+    const rvx = b.velX[j] - b.velX[i];
+    const rvy = b.velY[j] - b.velY[i];
+    const rvz = b.velZ[j] - b.velZ[i];
+    const rspeed = Math.sqrt(rvx * rvx + rvy * rvy + rvz * rvz);
+    if (rspeed > 1e-9) {
+      const k = mergeKickSpeed(m1, m2) / rspeed; // 정규화 + 크기
+      vx += rvx * k;
+      vy += rvy * k;
+      vz += rvz * k;
+    }
+  }
+
   if (anyPinned) {
-    // 둘 다 고정이면 무거운 쪽의 닻 위치를 남긴다.
+    // 고정이 이긴다: 킥도 운동량도 무시하고 닻 위치에 속도 0으로 멈춘다.
     const anchor = iPinned && jPinned ? (m2 > m1 ? j : i) : iPinned ? i : j;
     px = b.posX[anchor];
     py = b.posY[anchor];
@@ -68,12 +91,7 @@ function mergeInto(b: BodyBuffer, i: number, j: number): void {
   const r2 = b.radius[j];
   const radius = Math.cbrt(r1 * r1 * r1 + r2 * r2 * r2);
 
-  const iBH = b.type[i] === BodyType.BLACK_HOLE;
-  const jBH = b.type[j] === BodyType.BLACK_HOLE;
-  const anyBH = iBH || jBH;
-
-  // 정체성(id·색·타입): 보통은 무거운 쪽이 이기지만, **블랙홀이 있으면 블랙홀이 이긴다.**
-  // 가벼운 블랙홀이 무거운 항성을 삼켜도 결과는 블랙홀이다.
+  // 정체성(id·색·타입): 보통은 무거운 쪽이 이기지만, 블랙홀이 있으면 블랙홀이 이긴다.
   const takeJ = iBH !== jBH ? jBH : m2 > m1;
   if (takeJ) {
     b.id[i] = b.id[j];
@@ -86,7 +104,6 @@ function mergeInto(b: BodyBuffer, i: number, j: number): void {
   b.mass[i] = m;
 
   if (anyBH) {
-    // 블랙홀의 반지름은 부피 합성이 아니라 사건의 지평선이다.
     b.type[i] = BodyType.BLACK_HOLE;
     b.radius[i] = schwarzschildRadius(m);
     b.colR[i] = 0;
@@ -102,13 +119,20 @@ function mergeInto(b: BodyBuffer, i: number, j: number): void {
   b.velY[i] = vy;
   b.velZ[i] = vz;
   b.pinned[i] = anyPinned ? 1 : 0;
+
+  // 블랙홀 쌍성 병합만 잔물결 이벤트를 낸다. 블랙홀이 일반 천체를 삼키는 것은
+  // (이후의 ISCO 흡수 플레어로) 별도로 다룬다. 위치는 잔여 블랙홀 자리(pinned면 닻),
+  // payload는 잔여 질량(잔물결 크기).
+  if (bothBH) {
+    events?.push(EventKind.MERGE, px, py, pz, m);
+  }
 }
 
 /**
  * 거리 < 반지름 합인 쌍을 모두 병합한다.
  * @returns 병합이 한 번이라도 일어났으면 true (호출자는 가속도를 다시 계산해야 한다)
  */
-export function resolveCollisions(b: BodyBuffer): boolean {
+export function resolveCollisions(b: BodyBuffer, events?: EventBuffer): boolean {
   let merged = false;
 
   for (let i = 0; i < b.count; i++) {
@@ -120,7 +144,7 @@ export function resolveCollisions(b: BodyBuffer): boolean {
       const capture = captureDistance(b, i, j);
 
       if (dx * dx + dy * dy + dz * dz < capture * capture) {
-        mergeInto(b, i, j);
+        mergeInto(b, i, j, events);
         b.removeAt(j); // 마지막 원소가 j 자리로 온다 → j를 증가시키지 않고 다시 검사
         merged = true;
       } else {

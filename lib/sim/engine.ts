@@ -186,7 +186,7 @@ export class SimulationEngine {
 
     // 순서가 중요하다. 병합이 질량을 바꾸므로 붕괴 검사는 병합 **뒤**에 와야
     // "항성 둘이 합쳐지는 순간 블랙홀이 된다"가 성립한다.
-    if (resolveCollisions(this.bodies)) this.accDirty = true;
+    if (resolveCollisions(this.bodies, this.events)) this.accDirty = true;
 
     // 임계 질량을 넘긴 천체가 스스로 무너진다. 질량은 그대로이므로 가속도에는
     // 영향이 없지만, 반지름이 바뀌므로 다음 충돌 판정이 달라진다.

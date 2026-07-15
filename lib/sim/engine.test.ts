@@ -335,4 +335,18 @@ describe('SimulationEngine 이벤트 버퍼', () => {
     e.step(1 / 60);
     expect(e.events.count).toBe(0);
   });
+
+  it('블랙홀 쌍성 병합이 step()을 통해 MERGE 이벤트를 낸다', () => {
+    const e = new SimulationEngine();
+    const a = e.spawn({ position: [0, 0, 0], velocity: [0, 0, 0], mass: 4000 });
+    const b2 = e.spawn({ position: [3, 0, 0], velocity: [0, 0, 0], mass: 4000 });
+    e.collapseToBlackHole(a);
+    e.collapseToBlackHole(b2);
+
+    e.step(1 / 60);
+
+    expect(e.bodies.count).toBe(1);
+    expect(e.events.count).toBe(1);
+    expect(e.events.kind[0]).toBe(EventKind.MERGE);
+  });
 });
