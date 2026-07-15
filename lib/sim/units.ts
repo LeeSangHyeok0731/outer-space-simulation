@@ -111,3 +111,20 @@ export function mergeKickSpeed(m1: number, m2: number): number {
   const scale = (q * q * (1 - q)) / Math.pow(1 + q, 5);
   return KICK_STRENGTH * scale;
 }
+
+/** 광자 구 반지름의 r_s 배수. 이 반지름에서 빛은 블랙홀을 궤도로 돈다. */
+export const PHOTON_SPHERE_FACTOR = 1.5;
+
+/**
+ * 중력 시간 지연 배율. `f = √(1 − r_s/r)`
+ *
+ * 바깥 관찰자 기준 시계 속도다. 멀면(r→∞) 1(지연 없음), 사건의 지평선(r=r_s)에서 0(정지).
+ * r을 r_s의 배수로 재면 f는 질량과 무관하다 — 광자 구(1.5 r_s)에서 늘 ≈0.577,
+ * ISCO(3 r_s)에서 늘 ≈0.816이다.
+ *
+ * r ≤ r_s면 0으로 클램프한다(음수 sqrt 방지).
+ */
+export function timeDilationAt(rs: number, r: number): number {
+  if (r <= rs) return 0;
+  return Math.sqrt(1 - rs / r);
+}

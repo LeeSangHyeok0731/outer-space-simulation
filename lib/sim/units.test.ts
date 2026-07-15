@@ -7,8 +7,10 @@ import {
   KICK_STRENGTH,
   mergeKickSpeed,
   MIN_RADIUS,
+  PHOTON_SPHERE_FACTOR,
   radiusFromMass,
   schwarzschildRadius,
+  timeDilationAt,
 } from './units';
 
 describe('radiusFromMass', () => {
@@ -83,5 +85,36 @@ describe('병합 킥 속력 (피치트 질량비 법칙)', () => {
     // q = 0.5 → scale = 0.5²·0.5 / 1.5⁵
     const expected = KICK_STRENGTH * ((0.5 * 0.5 * 0.5) / Math.pow(1.5, 5));
     expect(mergeKickSpeed(1000, 500)).toBeCloseTo(expected, 10);
+  });
+});
+
+describe('중력 시간 지연 (timeDilationAt)', () => {
+  it('사건의 지평선에서 시간이 멈춘다 (f=0)', () => {
+    expect(timeDilationAt(10, 10)).toBe(0);
+  });
+
+  it('지평선 안(r < r_s)은 0으로 클램프한다 (음수 sqrt 방지)', () => {
+    expect(timeDilationAt(10, 5)).toBe(0);
+  });
+
+  it('아주 멀면 지연이 없다 (f→1)', () => {
+    expect(timeDilationAt(10, 1e6)).toBeCloseTo(1, 4);
+  });
+
+  it('광자 구(1.5 r_s)에서 ≈0.577이다', () => {
+    expect(timeDilationAt(10, 1.5 * 10)).toBeCloseTo(Math.sqrt(1 / 3), 10);
+  });
+
+  it('ISCO(3 r_s)에서 ≈0.816이다', () => {
+    expect(timeDilationAt(10, 3 * 10)).toBeCloseTo(Math.sqrt(2 / 3), 10);
+  });
+
+  it('같은 r_s 배수면 질량과 무관하게 같은 값이다', () => {
+    // r_s=10에서 r=20, r_s=100에서 r=200 — 둘 다 2배 거리라 같은 f
+    expect(timeDilationAt(10, 20)).toBeCloseTo(timeDilationAt(100, 200), 12);
+  });
+
+  it('PHOTON_SPHERE_FACTOR는 1.5다', () => {
+    expect(PHOTON_SPHERE_FACTOR).toBe(1.5);
   });
 });
