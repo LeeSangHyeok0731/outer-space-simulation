@@ -84,3 +84,30 @@ export function schwarzschildRadius(mass: number): number {
 export function iscoRadius(mass: number): number {
   return 3 * schwarzschildRadius(mass);
 }
+
+/**
+ * 병합 킥의 세기. 클수록 잔여 블랙홀이 세게 튄다.
+ *
+ * 조정 가능한 숫자다(설계 문서 §7). 너무 크면 병합 잔여 블랙홀이 화면 밖으로 날아가고,
+ * 너무 작으면 반동이 안 보인다. 최종값은 사람이 브라우저에서 맞춘다.
+ */
+export const KICK_STRENGTH = 200;
+
+/**
+ * 블랙홀 쌍성 병합의 중력파 반동(킥) 속력. 피치트(Fitchett) 질량비 법칙:
+ *
+ *   q = m_light / m_heavy,  v = KICK_STRENGTH · q²(1−q) / (1+q)⁵
+ *
+ * 정성적 거동이 **실제 물리**다: 같은 질량(q=1)이면 0(대칭이라 반동 없음),
+ * 극단적 질량비(q→0)여도 0(시험입자 극한), 그 사이 q≈0.38 부근에서 최대다.
+ *
+ * 방향은 이 함수가 정하지 않는다 — 호출자가 병합 직전 상대속도로 근사한다(스핀이 없어서).
+ */
+export function mergeKickSpeed(m1: number, m2: number): number {
+  const heavy = Math.max(Math.abs(m1), Math.abs(m2));
+  const light = Math.min(Math.abs(m1), Math.abs(m2));
+  if (heavy === 0) return 0;
+  const q = light / heavy;
+  const scale = (q * q * (1 - q)) / Math.pow(1 + q, 5);
+  return KICK_STRENGTH * scale;
+}

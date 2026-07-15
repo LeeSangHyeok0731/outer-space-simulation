@@ -5,6 +5,7 @@ import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import AccretionDisks from './AccretionDisks';
 import Bodies from './Bodies';
 import CameraRig from './CameraRig';
+import EffectsController from './EffectsController';
 import PinMarkers from './PinMarkers';
 import SpawnController from './SpawnController';
 import Starfield from './Starfield';
@@ -29,6 +30,7 @@ export default function SpaceCanvas() {
       <Trails />
       <PinMarkers />
       <AccretionDisks />
+      <EffectsController />
       <CameraRig />
       <SpawnController />
       <EffectComposer>

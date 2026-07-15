@@ -4,6 +4,8 @@ import {
   C,
   COLLAPSE_MASS,
   iscoRadius,
+  KICK_STRENGTH,
+  mergeKickSpeed,
   MIN_RADIUS,
   radiusFromMass,
   schwarzschildRadius,
@@ -57,5 +59,29 @@ describe('블랙홀 공식', () => {
     // 이래야 "항성 두 개를 충돌시키면 블랙홀이 된다"는 규칙이 성립한다.
     expect(COLLAPSE_MASS).toBeGreaterThan(BODY_PRESETS.star.mass);
     expect(COLLAPSE_MASS).toBeLessThan(BODY_PRESETS.star.mass * 2);
+  });
+});
+
+describe('병합 킥 속력 (피치트 질량비 법칙)', () => {
+  it('같은 질량이면 킥이 없다 (대칭이라 반동 없음)', () => {
+    expect(mergeKickSpeed(1000, 1000)).toBe(0);
+  });
+
+  it('비대칭 병합은 킥이 있다', () => {
+    expect(mergeKickSpeed(1000, 380)).toBeGreaterThan(0);
+  });
+
+  it('적당한 질량비가 극단적 질량비보다 세게 튄다', () => {
+    // q²(1−q)/(1+q)⁵ 는 q≈0.38 부근에서 최대다. 같은 질량(q→1)도,
+    // 아주 가벼운 쪽(q→0)도 반동이 약하다.
+    const moderate = mergeKickSpeed(1000, 380);
+    expect(moderate).toBeGreaterThan(mergeKickSpeed(1000, 50)); // 너무 가벼운 쪽
+    expect(moderate).toBeGreaterThan(mergeKickSpeed(1000, 950)); // 거의 같은 질량
+  });
+
+  it('KICK_STRENGTH에 정비례한다', () => {
+    // q = 0.5 → scale = 0.5²·0.5 / 1.5⁵
+    const expected = KICK_STRENGTH * ((0.5 * 0.5 * 0.5) / Math.pow(1.5, 5));
+    expect(mergeKickSpeed(1000, 500)).toBeCloseTo(expected, 10);
   });
 });

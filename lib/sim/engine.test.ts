@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { SimulationEngine, FIXED_DT, MAX_SUBSTEPS } from './engine';
+import { EventKind } from './events';
 import {
   BODY_PRESETS,
   BodyType,
@@ -316,5 +317,80 @@ describe('SimulationEngine 블랙홀', () => {
     const i = e.bodies.indexOfId(id);
     expect(e.bodies.mass[i]).toBe(80);
     expect(e.bodies.radius[i]).toBeCloseTo(radiusFromMass(80), 10);
+  });
+});
+
+describe('SimulationEngine 이벤트 버퍼', () => {
+  it('engine.events는 처음에 비어 있다', () => {
+    const e = new SimulationEngine();
+    expect(e.events.count).toBe(0);
+  });
+
+  it('step()은 시작에서 이벤트를 비운다 (일시정지 중에도)', () => {
+    // 씬은 매 프레임 이벤트를 읽는다. 비우지 않으면 같은 이벤트가 매 프레임 다시
+    // 스폰돼 효과가 무한 반복된다. 일시정지 중에도 새 이벤트가 없으므로 비워야 한다.
+    const e = new SimulationEngine();
+    e.events.push(EventKind.MERGE, 0, 0, 0, 1);
+    e.paused = true;
+    e.step(1 / 60);
+    expect(e.events.count).toBe(0);
+  });
+
+  it('블랙홀 쌍성 병합이 step()을 통해 MERGE 이벤트를 낸다', () => {
+    const e = new SimulationEngine();
+    const a = e.spawn({ position: [0, 0, 0], velocity: [0, 0, 0], mass: 4000 });
+    const b2 = e.spawn({ position: [3, 0, 0], velocity: [0, 0, 0], mass: 4000 });
+    e.collapseToBlackHole(a);
+    e.collapseToBlackHole(b2);
+
+    e.step(1 / 60);
+
+    expect(e.bodies.count).toBe(1);
+    expect(e.events.count).toBe(1);
+    expect(e.events.kind[0]).toBe(EventKind.MERGE);
+  });
+
+  it('치트 블랙홀 증발이 step()을 통해 EVAPORATION 이벤트를 낸다', () => {
+    const e = new SimulationEngine();
+    const id = e.spawn({ position: [10, 0, 0], velocity: [0, 0, 0], mass: 1 });
+    e.collapseToBlackHole(id);
+
+    // 질량 1의 증발 시간은 약 1.67초. 소멸할 때까지 굴린다.
+    let sawEvaporation = false;
+    for (let i = 0; i < 5 * 60 && e.bodies.count > 0; i++) {
+      e.step(1 / 60);
+      for (let k = 0; k < e.events.count; k++) {
+        if (e.events.kind[k] === EventKind.EVAPORATION) sawEvaporation = true;
+      }
+    }
+
+    expect(e.bodies.count).toBe(0);
+    expect(sawEvaporation).toBe(true);
+  });
+
+  it('킥과 이벤트가 있어도 결정론이 유지된다', () => {
+    const build = () => {
+      const e = new SimulationEngine();
+      const a = e.spawn({ position: [0, 0, 0], velocity: [0, 0, 0], mass: 4000 });
+      const c = e.spawn({ position: [40, 0, 0], velocity: [0, 0, 6], mass: 1200 });
+      e.collapseToBlackHole(a);
+      e.collapseToBlackHole(c);
+      e.spawn({ position: [-150, 0, 30], velocity: [1, 0, -4], mass: 10 });
+      return e;
+    };
+    const a = build();
+    const b = build();
+
+    for (let i = 0; i < 400; i++) {
+      a.step(1 / 60);
+      b.step(1 / 60);
+    }
+
+    expect(a.bodies.count).toBe(b.bodies.count);
+    for (let i = 0; i < a.bodies.count; i++) {
+      expect(a.bodies.posX[i]).toBe(b.bodies.posX[i]);
+      expect(a.bodies.velX[i]).toBe(b.bodies.velX[i]);
+      expect(a.bodies.mass[i]).toBe(b.bodies.mass[i]);
+    }
   });
 });
