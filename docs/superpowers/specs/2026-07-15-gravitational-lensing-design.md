@@ -1,7 +1,7 @@
 # 중력 렌즈 설계 — 화면 공간 후처리 왜곡
 
 - 작성일: 2026-07-15
-- 상태: 승인됨 (구현 대기)
+- 상태: 구현 완료 (2026-07-15)
 - 범위: 블랙홀 후속 서브프로젝트 **B** — 중력 렌즈. 블랙홀 뒤의 빛(배경별·천체·강착원반·광자 구 링)이 휘어 보이는 전체 화면 왜곡.
 - 선행: [블랙홀 디테일 팩](2026-07-15-blackhole-detail-pack-design.md) (구현 완료, C — 광자 구 링 + 시간 지연). [블랙홀 이벤트→효과](2026-07-15-blackhole-effects-design.md) (구현 완료, A). [2단계 블랙홀](2026-07-14-black-hole-design.md) (구현 완료).
 
@@ -37,10 +37,10 @@
 
 ## 3. 렌즈 이펙트 (`components/scene/GravitationalLensing.tsx`)
 
-기존 `EffectComposer` 파이프라인에 커스텀 후처리 이펙트 하나를 얹는다. `@react-three/postprocessing`의 `wrapEffect`로 `postprocessing`의 `Effect`를 감싼다. `postprocessing`의 `ShockWave`(한 점 중심 방사형 화면 왜곡)가 같은 기법의 선례다.
+기존 `EffectComposer` 파이프라인에 커스텀 후처리 이펙트 하나를 얹는다. `postprocessing`의 `Effect`를 상속한 서브클래스(`LensingEffectImpl`)를 `useMemo`로 만들고 `<primitive object={effect} dispose={null} />`로 `<EffectComposer>` 자식으로 마운트한다. 셰이더 진입점은 `void mainUv(inout vec2 uv)`이며, `blendFunction`은 `NORMAL`(기본 `SCREEN`이면 원본과 합성돼 화면이 밝아진다). `postprocessing`의 `ShockWave`(한 점 중심 방사형 화면 왜곡, 카메라로 3D 위치 투영)가 같은 기법의 선례다.
 
 **데이터 흐름 (매 프레임):**
-1. 이펙트의 `update` 훅(또는 R3F `useFrame`)에서 카메라와 엔진에 접근한다.
+1. R3F `useFrame`에서 카메라(`state.camera`)와 엔진에 접근한다.
 2. 각 블랙홀의 월드 좌표를 카메라로 투영해 **화면 좌표(NDC/UV)** 와 **화면상 사건의 지평선 반지름**(월드 r_s를 화면 스케일로 환산)을 구한다.
 3. 화면상 겉보기 크기가 큰 순으로 최대 `MAX_LENSES = 4`개만 골라 uniform 배열(중심 UV, 화면 반지름/강도)에 채운다. 활성 렌즈 개수도 uniform으로 넘긴다.
 4. 프래그먼트 셰이더가 각 픽셀에서 활성 렌즈를 순회한다.
@@ -48,7 +48,7 @@
 **프래그먼트 셰이더 (개념):**
 - 픽셀 UV와 렌즈 중심의 차 벡터를 **화면비 보정**(가로세로 왜곡 방지) 후 거리 `d`를 구한다.
 - 변위 = `(중심 방향 단위 벡터) · (renderRadius² / d)` 꼴로 배경 샘플 좌표를 중심 쪽으로 당긴다 → 빛이 모여 링 생성. 여러 렌즈는 변위를 누적한다.
-- 사건의 지평선 반지름 안쪽(`d < horizonRadius`)은 검게 출력(그림자).
+- 검은 사건의 지평선 그림자는 별도로 합성하지 않는다. 이미 렌더된 블랙홀 구체가 프레임버퍼에 있어 UV 왜곡과 함께 휘며 그림자가 된다. 셰이더 진입점은 `mainUv(inout vec2 uv)`이며, UV를 렌즈 중심으로 당기면 프레임워크가 그 좌표로 입력을 샘플링한다.
 - 최종적으로 왜곡된 UV로 입력 프레임버퍼를 샘플링한다.
 
 **규칙 준수:**
