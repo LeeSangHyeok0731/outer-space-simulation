@@ -2,6 +2,7 @@ import { BodyBuffer, type BodyInit } from './bodies';
 import { applyCollapse, applyHawking, collapseAt, isBlackHoleAt } from './blackhole';
 import { resolveCollisions } from './collisions';
 import { computeAccelerations, integrate } from './integrator';
+import { EventBuffer } from './events';
 import { BodyType, MAX_BODIES, radiusFromMass, schwarzschildRadius } from './units';
 
 /** 물리 스텝은 화면 프레임과 무관하게 항상 이 간격으로 돈다. */
@@ -32,6 +33,8 @@ export interface SerializedState {
 
 export class SimulationEngine {
   readonly bodies: BodyBuffer;
+  /** 이번 프레임의 물리 사건(증발·병합). 씬이 읽어 시각효과를 스폰한다. */
+  readonly events = new EventBuffer();
 
   timeScale = 1;
   paused = false;
@@ -141,6 +144,11 @@ export class SimulationEngine {
    * 배속은 누적기에 곱해진다.
    */
   step(realDt: number): void {
+    // 매 프레임 시작에서 비운다. 이번 프레임의 서브스텝들이 다시 채우고,
+    // 씬이 이 프레임에 한 번 읽는다. paused 검사보다 앞에 둬야 일시정지 중
+    // 낡은 이벤트가 매 프레임 다시 스폰되지 않는다.
+    this.events.clear();
+
     if (this.paused) return;
 
     this.accumulator += Math.min(realDt, MAX_FRAME_DT) * this.timeScale;

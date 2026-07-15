@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { SimulationEngine, FIXED_DT, MAX_SUBSTEPS } from './engine';
+import { EventKind } from './events';
 import {
   BODY_PRESETS,
   BodyType,
@@ -316,5 +317,22 @@ describe('SimulationEngine 블랙홀', () => {
     const i = e.bodies.indexOfId(id);
     expect(e.bodies.mass[i]).toBe(80);
     expect(e.bodies.radius[i]).toBeCloseTo(radiusFromMass(80), 10);
+  });
+});
+
+describe('SimulationEngine 이벤트 버퍼', () => {
+  it('engine.events는 처음에 비어 있다', () => {
+    const e = new SimulationEngine();
+    expect(e.events.count).toBe(0);
+  });
+
+  it('step()은 시작에서 이벤트를 비운다 (일시정지 중에도)', () => {
+    // 씬은 매 프레임 이벤트를 읽는다. 비우지 않으면 같은 이벤트가 매 프레임 다시
+    // 스폰돼 효과가 무한 반복된다. 일시정지 중에도 새 이벤트가 없으므로 비워야 한다.
+    const e = new SimulationEngine();
+    e.events.push(EventKind.MERGE, 0, 0, 0, 1);
+    e.paused = true;
+    e.step(1 / 60);
+    expect(e.events.count).toBe(0);
   });
 });
