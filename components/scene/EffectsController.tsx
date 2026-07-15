@@ -71,7 +71,9 @@ export default function EffectsController() {
     const ev = engine.events;
     for (let k = 0; k < ev.count; k++) {
       if (ev.kind[k] === EventKind.EVAPORATION) {
-        // 소멸 직전 질량이 클수록 큰 섬광. 사건의 지평선을 기준 크기로 쓴다(최소 보장).
+        // 사건의 지평선을 기준 크기로 삼되 하한을 보장한다. 증발은 늘 바닥 질량 근처에서
+        // 일어나 r_s가 아주 작으므로 실제로는 하한(0.5)이 이겨 섬광 크기가 사실상 일정하다.
+        // payload 계수는 나중에 질량 차이를 보이게 키울 여지로 남겨 둔다.
         const size = Math.max(schwarzschildRadius(ev.payload[k]), 0.5) * 4;
         spawn(flashes.current, ev.x[k], ev.y[k], ev.z[k], size);
       } else if (ev.kind[k] === EventKind.MERGE) {

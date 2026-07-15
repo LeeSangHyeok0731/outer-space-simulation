@@ -87,7 +87,7 @@ v_kick = KICK_STRENGTH · scale
 **새 컴포넌트 `components/scene/EffectsController.tsx`.** `Bodies` **뒤에** 마운트(같은 프레임의 이벤트를 본다). 엔진을 **읽기만** 한다.
 
 - useFrame에서 `engine.events`를 읽어 **풀링된** 효과 슬롯에 스폰한다. 풀·재사용 객체는 모두 모듈 스코프 — **useFrame 안에서 할당하지 않는다.**
-- **증발 섬광:** 짧게 확 퍼졌다 ~0.5초에 페이드하는 밝은 버스트. `Points`(또는 빌보드 스프라이트) 한 종류, draw call 1회. payload(소멸 질량)로 크기를 정한다.
+- **증발 섬광:** 짧게 확 퍼졌다 ~0.5초에 페이드하는 밝은 버스트. sphere `InstancedMesh` 한 종류, draw call 1회. 증발은 항상 바닥 질량 근처에서 일어나므로 실질적으로 최소 크기로 고정된다(payload로 크기를 키우도록 열어 뒀지만 현재 값에선 하한이 이긴다).
 - **병합 잔물결:** 확장하며 페이드하는 링. `InstancedMesh`(강착원반과 같은 패턴), draw call 1회. ~1초. payload(잔여 질량)로 최종 반경을 정한다.
 - **발광:** `toneMapped={false}` + Bloom(`ui-conventions.md` 준수). **AdditiveBlending은 쓰지 않는다** — 강착원반이 유일한 예외로 규정돼 있고, 그 예외를 복사하지 않는다. 기본 룩이 약하면 설계-검토에서 조정한다.
 - **효과 수명:** 프레임 델타로 진행한다. 순수 시각이라 프레임률 의존이 무방하다(물리가 아니다).
