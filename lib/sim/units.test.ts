@@ -12,6 +12,8 @@ import {
   radiusFromMass,
   schwarzschildRadius,
   timeDilationAt,
+  tidalRadius,
+  TIDAL_STRENGTH,
 } from './units';
 
 describe('radiusFromMass', () => {
@@ -141,5 +143,27 @@ describe('lensDeflection', () => {
   it('b <= 0 이면 0을 반환한다 (0 나눗셈 방지)', () => {
     expect(lensDeflection(10, 0)).toBe(0);
     expect(lensDeflection(10, -5)).toBe(0);
+  });
+});
+
+describe('tidalRadius', () => {
+  it('공식대로 계산한다: TIDAL_STRENGTH · rBody · ∛(mBH/mBody)', () => {
+    const expected = TIDAL_STRENGTH * 2 * Math.cbrt(1000 / 8);
+    expect(tidalRadius(2, 8, 1000)).toBeCloseTo(expected);
+  });
+
+  it('mBH가 클수록 조석 반지름이 크다', () => {
+    expect(tidalRadius(2, 8, 5000)).toBeGreaterThan(tidalRadius(2, 8, 1000));
+  });
+
+  it('mBody ≤ 0이면 0을 반환한다', () => {
+    expect(tidalRadius(2, 0, 1000)).toBe(0);
+    expect(tidalRadius(2, -5, 1000)).toBe(0);
+  });
+
+  it('전형적 설정에서 조석 반지름이 ISCO보다 바깥이다 (찢을 껍질이 존재)', () => {
+    // 질량 3000 블랙홀 + 질량 20 행성(반지름 radiusFromMass(20)).
+    const rBody = radiusFromMass(20);
+    expect(tidalRadius(rBody, 20, 3000)).toBeGreaterThan(iscoRadius(3000));
   });
 });
