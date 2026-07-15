@@ -2,6 +2,7 @@ import { BodyBuffer, type BodyInit } from './bodies';
 import { applyCollapse, applyHawking, collapseAt, isBlackHoleAt } from './blackhole';
 import { resolveCollisions } from './collisions';
 import { computeAccelerations, integrate } from './integrator';
+import { resolveTidalDisruption } from './tidal';
 import { EventBuffer } from './events';
 import { BodyType, MAX_BODIES, radiusFromMass, schwarzschildRadius } from './units';
 
@@ -183,6 +184,10 @@ export class SimulationEngine {
     }
 
     integrate(this.bodies, dt);
+
+    // 조석 파괴는 ISCO 흡수보다 **앞**에 온다. 조석 반지름 r_t가 ISCO보다 바깥이라
+    // 천체는 공간적으로 r_t에 먼저 닿는다 — 삼켜지기 전에 먼저 찢어져야 한다.
+    if (resolveTidalDisruption(this.bodies, this.events)) this.accDirty = true;
 
     // 순서가 중요하다. 병합이 질량을 바꾸므로 붕괴 검사는 병합 **뒤**에 와야
     // "항성 둘이 합쳐지는 순간 블랙홀이 된다"가 성립한다.
