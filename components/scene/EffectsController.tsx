@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 import * as THREE from 'three';
 import { EventKind } from '@/lib/sim/events';
-import { iscoRadius, schwarzschildRadius } from '@/lib/sim/units';
+import { iscoRadius, radiusFromMass, schwarzschildRadius } from '@/lib/sim/units';
 import { useSimulation } from '@/state/SimulationProvider';
 
 // useFrame 안에서 할당하지 않기 위해 모듈 스코프에 재사용 객체를 둔다.
@@ -79,6 +79,11 @@ export default function EffectsController() {
       } else if (ev.kind[k] === EventKind.MERGE) {
         // 잔여 질량의 ISCO를 잔물결 최종 반경 기준으로 쓴다.
         spawn(ripples.current, ev.x[k], ev.y[k], ev.z[k], iscoRadius(ev.payload[k]) * 3);
+      } else if (ev.kind[k] === EventKind.TIDAL) {
+        // 찢김 순간 밝은 섬광 버스트. 크기는 부서진 천체 질량에 비례해, 파편 스트림이
+        // 실제로 늘어나는 것을 시각적으로 강조한다(증발 섬광보다 크게 보인다).
+        const size = Math.max(radiusFromMass(ev.payload[k]), 0.5) * 5;
+        spawn(flashes.current, ev.x[k], ev.y[k], ev.z[k], size);
       }
     }
 
