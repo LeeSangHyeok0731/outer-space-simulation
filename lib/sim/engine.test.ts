@@ -349,4 +349,48 @@ describe('SimulationEngine 이벤트 버퍼', () => {
     expect(e.events.count).toBe(1);
     expect(e.events.kind[0]).toBe(EventKind.MERGE);
   });
+
+  it('치트 블랙홀 증발이 step()을 통해 EVAPORATION 이벤트를 낸다', () => {
+    const e = new SimulationEngine();
+    const id = e.spawn({ position: [10, 0, 0], velocity: [0, 0, 0], mass: 1 });
+    e.collapseToBlackHole(id);
+
+    // 질량 1의 증발 시간은 약 1.67초. 소멸할 때까지 굴린다.
+    let sawEvaporation = false;
+    for (let i = 0; i < 5 * 60 && e.bodies.count > 0; i++) {
+      e.step(1 / 60);
+      for (let k = 0; k < e.events.count; k++) {
+        if (e.events.kind[k] === EventKind.EVAPORATION) sawEvaporation = true;
+      }
+    }
+
+    expect(e.bodies.count).toBe(0);
+    expect(sawEvaporation).toBe(true);
+  });
+
+  it('킥과 이벤트가 있어도 결정론이 유지된다', () => {
+    const build = () => {
+      const e = new SimulationEngine();
+      const a = e.spawn({ position: [0, 0, 0], velocity: [0, 0, 0], mass: 4000 });
+      const c = e.spawn({ position: [40, 0, 0], velocity: [0, 0, 6], mass: 1200 });
+      e.collapseToBlackHole(a);
+      e.collapseToBlackHole(c);
+      e.spawn({ position: [-150, 0, 30], velocity: [1, 0, -4], mass: 10 });
+      return e;
+    };
+    const a = build();
+    const b = build();
+
+    for (let i = 0; i < 400; i++) {
+      a.step(1 / 60);
+      b.step(1 / 60);
+    }
+
+    expect(a.bodies.count).toBe(b.bodies.count);
+    for (let i = 0; i < a.bodies.count; i++) {
+      expect(a.bodies.posX[i]).toBe(b.bodies.posX[i]);
+      expect(a.bodies.velX[i]).toBe(b.bodies.velX[i]);
+      expect(a.bodies.mass[i]).toBe(b.bodies.mass[i]);
+    }
+  });
 });

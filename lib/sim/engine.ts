@@ -194,7 +194,7 @@ export class SimulationEngine {
 
     // 호킹 증발. 천체가 사라졌을 때만 true를 반환한다 — 질량이 조금 줄어든 것만으로
     // 가속도를 무효화하면 블랙홀이 하나만 있어도 물리 비용이 2배가 된다.
-    if (applyHawking(this.bodies, dt)) this.accDirty = true;
+    if (applyHawking(this.bodies, dt, this.events)) this.accDirty = true;
     // 이번 스텝에서 충돌/병합, 또는 integrate() 내부 오버플로로 새로 생긴
     // 오염을 잡는다. 위 주석의 한계로 인해 원래 건강했던 천체가 여기서
     // 함께 제거될 수 있다.

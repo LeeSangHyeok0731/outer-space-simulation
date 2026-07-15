@@ -1,4 +1,5 @@
 import type { BodyBuffer } from './bodies';
+import { EventKind, type EventBuffer } from './events';
 import {
   BodyType,
   COLLAPSE_MASS,
@@ -65,7 +66,7 @@ export function applyCollapse(b: BodyBuffer): boolean {
  * integrate()가 어차피 매 스텝 내부에서 가속도를 다시 계산하므로 다음 스텝의 힘은
  * 새 질량으로 계산된다. 반면 천체가 사라지는 것은 다른 천체들이 느끼는 힘을 실제로 바꾼다.
  */
-export function applyHawking(b: BodyBuffer, dt: number): boolean {
+export function applyHawking(b: BodyBuffer, dt: number, events?: EventBuffer): boolean {
   let removed = false;
 
   // 뒤에서부터 도는 이유: removeAt은 swap-remove라 마지막 원소를 빈자리로 옮긴다.
@@ -77,6 +78,8 @@ export function applyHawking(b: BodyBuffer, dt: number): boolean {
     const next = m - (HAWKING_K / (m * m)) * dt;
 
     if (next <= EVAPORATION_FLOOR) {
+      // 위치는 removeAt이 덮어쓰기 전에 읽는다. payload는 소멸 직전 질량(섬광 크기).
+      events?.push(EventKind.EVAPORATION, b.posX[i], b.posY[i], b.posZ[i], m);
       b.removeAt(i);
       removed = true;
       continue;

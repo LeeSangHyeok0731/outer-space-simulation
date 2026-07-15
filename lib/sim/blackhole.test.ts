@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyCollapse, applyHawking, collapseAt, isBlackHoleAt } from './blackhole';
 import { BodyBuffer, type BodyInit } from './bodies';
+import { EventBuffer, EventKind } from './events';
 import {
   COLLAPSE_MASS,
   EVAPORATION_FLOOR,
@@ -168,5 +169,33 @@ describe('applyHawking (호킹 증발)', () => {
     expect(b.count).toBe(1);
     expect(b.mass[0]).toBeGreaterThan(COLLAPSE_MASS * 0.999);
     expect(isBlackHoleAt(b, 0)).toBe(true);
+  });
+
+  it('블랙홀이 소멸할 때 EVAPORATION 이벤트를 위치·질량과 함께 낸다', () => {
+    const events = new EventBuffer(8);
+    const b = new BodyBuffer(4);
+    b.add(make({ x: 7, y: -3, z: 2, mass: 0.02, radius: 1 }));
+    collapseAt(b, 0);
+
+    expect(applyHawking(b, 1, events)).toBe(true);
+    expect(b.count).toBe(0);
+    expect(events.count).toBe(1);
+    expect(events.kind[0]).toBe(EventKind.EVAPORATION);
+    expect(events.x[0]).toBe(7);
+    expect(events.y[0]).toBe(-3);
+    expect(events.z[0]).toBe(2);
+    expect(events.payload[0]).toBeCloseTo(0.02, 10); // 소멸 직전 질량
+  });
+
+  it('질량이 줄기만 할 때는 이벤트를 내지 않는다', () => {
+    const events = new EventBuffer(8);
+    const b = new BodyBuffer(4);
+    b.add(make({ mass: 100, radius: 1 }));
+    collapseAt(b, 0);
+
+    applyHawking(b, 1, events);
+
+    expect(b.count).toBe(1);
+    expect(events.count).toBe(0);
   });
 });
