@@ -1,7 +1,7 @@
 # 조석 파괴 설계 — 파편으로 분열 (spaghettification)
 
 - 작성일: 2026-07-15
-- 상태: 승인됨 (구현 대기)
+- 상태: 구현 완료 (2026-07-16)
 - 범위: 블랙홀 후속 서브프로젝트 **조석 파괴** — 블랙홀에 너무 가까이 간 천체가 조석력으로 여러 파편(DEBRIS)으로 찢어진다. **실제 물리를 바꾸는** 첫 후속(천체를 스폰/제거).
 - 선행: [중력 렌즈](2026-07-15-gravitational-lensing-design.md) (구현 완료, B). [디테일 팩](2026-07-15-blackhole-detail-pack-design.md) (완료, C). [이벤트→효과](2026-07-15-blackhole-effects-design.md) (완료, A). [2단계 블랙홀](2026-07-14-black-hole-design.md) (완료).
 
@@ -77,7 +77,7 @@ computeAccelerations → integrate → resolveTidalDisruption → resolveCollisi
 
 ## 7. 찢김 순간 연출 (`components/scene/EffectsController.tsx`)
 
-분열 자리에 `EventKind.TIDAL = 2` 이벤트를 하나 낸다(payload = 질량). `EffectsController`가 읽어 **짧고 밝은 방사 섬광 줄기**를 그린다(스파게티화를 강조). 기존 EVAPORATION 섬광·MERGE 잔물결과 같은 풀·수명 패턴을 재사용한다. 발광은 `toneMapped=false` + Bloom(AdditiveBlending 없음). 순수 시각이라 결정론과 무관하다.
+분열 자리에 `EventKind.TIDAL = 2` 이벤트를 하나 낸다(payload = 질량). `EffectsController`가 읽어 **밝은 섬광 버스트**(크기는 질량 비례)를 그려 찢김 순간을 강조한다 — 방사 방향으로 늘어나는 스트림 모양은 파편 자체가 늘어서며 만든다. 구현은 기존 EVAPORATION 섬광과 같은 `flashes` 풀·수명 패턴을 재사용한다(증발 섬광보다 크게 보인다). 발광은 `toneMapped=false` + Bloom(AdditiveBlending 없음). 순수 시각이라 결정론과 무관하다.
 
 ## 8. 파일과 테스트
 
@@ -85,7 +85,7 @@ computeAccelerations → integrate → resolveTidalDisruption → resolveCollisi
 - `lib/sim/units.ts` — `TIDAL_STRENGTH`, `TIDAL_FRAGMENTS`, `tidalRadius(mBody, mBH)`(물리 반지름을 질량에서 계산), `BodyType.DEBRIS = 3`.
 - `lib/sim/events.ts` — `EventKind.TIDAL = 2`.
 - `lib/sim/engine.ts` — `substep`에서 `resolveCollisions` 앞에 `resolveTidalDisruption` 호출, 반환 true면 `accDirty`.
-- `components/scene/EffectsController.tsx` — TIDAL 이벤트 → 방사 섬광 줄기.
+- `components/scene/EffectsController.tsx` — TIDAL 이벤트 → 밝은 섬광 버스트(flashes 풀 재사용).
 
 **생성:**
 - `lib/sim/tidal.ts` — `resolveTidalDisruption(b: BodyBuffer, events?: EventBuffer): boolean`.
@@ -117,7 +117,7 @@ computeAccelerations → integrate → resolveTidalDisruption → resolveCollisi
 - 천체(행성 등)를 블랙홀 가까이 던지면 ISCO 바깥의 어느 거리에서 여러 파편으로 찢어지는가.
 - 파편이 방사 방향으로 가늘게 늘어선(스파게티화) 스트림으로 보이는가.
 - 안쪽 파편은 빨려들고(흡수 섬광), 바깥쪽은 튕겨 나가기도 하는가.
-- 찢김 순간 방사 섬광 줄기 연출이 뜨는가.
+- 찢김 순간 밝은 섬광 버스트(증발 섬광보다 크게)가 뜨는가.
 - 파편이 무한 증식하지 않는가(폭주 방지 — 한 번만 부서짐).
 - 큰 블랙홀은 천체를 찢지 않고 통째로 삼키는가(`r_t ≤ ISCO`).
 - 파편이 많이 쌓여도(여러 번 파괴) 프레임이 유지되고 결국 흡수되어 정리되는가.
