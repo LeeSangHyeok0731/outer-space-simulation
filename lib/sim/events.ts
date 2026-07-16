@@ -5,6 +5,7 @@
 export const EventKind = {
   EVAPORATION: 0,
   MERGE: 1,
+  TIDAL: 2,
 } as const;
 
 export type EventKindValue = (typeof EventKind)[keyof typeof EventKind];

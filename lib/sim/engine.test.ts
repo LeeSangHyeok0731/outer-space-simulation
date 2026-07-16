@@ -394,3 +394,39 @@ describe('SimulationEngine 이벤트 버퍼', () => {
     }
   });
 });
+
+describe('조석 파괴 통합', () => {
+  it('조석 띠 안의 천체가 스텝 후 여러 DEBRIS로 부서진다', () => {
+    const engine = new SimulationEngine();
+    // 질량 3000 천체를 스폰해 블랙홀로 만든다(반지름=사건의 지평선).
+    const bhId = engine.spawn({ position: [0, 0, 0], velocity: [0, 0, 0], mass: 3000 });
+    engine.collapseToBlackHole(bhId);
+    // ISCO(≈28.8) < 35 < r_t(≈44.7). 접선 속도를 줘 한 스텝에 통째로 빨려들지 않게 한다.
+    engine.spawn({ position: [35, 0, 0], velocity: [0, 8, 0], mass: 20 });
+
+    engine.step(1 / 120); // 서브스텝 1회
+
+    let debris = 0;
+    let mass = 0;
+    for (let i = 0; i < engine.bodies.count; i++) {
+      if (engine.bodies.type[i] === BodyType.DEBRIS) {
+        debris++;
+        mass += engine.bodies.mass[i];
+      }
+    }
+    expect(debris).toBeGreaterThan(1); // 여러 조각으로 부서졌다
+    expect(mass).toBeCloseTo(20, 1); // 파편 질량 합 ≈ 원래 질량
+  });
+
+  it('파편이 무한 증식하지 않는다 (여러 스텝 후 천체 수 유한)', () => {
+    const engine = new SimulationEngine();
+    const bhId = engine.spawn({ position: [0, 0, 0], velocity: [0, 0, 0], mass: 3000 });
+    engine.collapseToBlackHole(bhId);
+    engine.spawn({ position: [35, 0, 0], velocity: [0, 8, 0], mass: 20 });
+
+    for (let s = 0; s < 200; s++) engine.step(1 / 120);
+
+    // 파괴는 한 번뿐이고 파편은 결국 흡수되므로 천체 수는 상한(블랙홀 1 + 파편 N) 이하.
+    expect(engine.bodies.count).toBeLessThanOrEqual(1 + 6);
+  });
+});
