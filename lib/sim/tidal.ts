@@ -3,7 +3,13 @@ import { EventKind, type EventBuffer } from './events';
 import { BodyType, iscoRadius, radiusFromMass, tidalRadius, TIDAL_FRAGMENTS } from './units';
 
 // 파편 배치·속도 스프레드 조정 상수(스펙 §10). 시각 조정 대상.
-const FRAGMENT_SPACING_FACTOR = 1.5; // 파편 간격 = 이 값 × 파편 반지름 (방사 방향)
+//
+// SPACING_FACTOR는 반드시 2.0을 넘어야 한다. 인접 파편 간격 = FACTOR·rf 이고, 두 파편의
+// 포획(병합) 거리 = rf + rf = 2·rf 다(collisions.ts captureDistance, 둘 다 비-블랙홀).
+// 2.0 이하면 인접 파편이 겹쳐, 파괴 바로 뒤 같은 서브스텝의 resolveCollisions에서 즉시
+// 재병합돼 스트림이 몇 덩어리로 뭉쳐버린다(스파게티화 목표가 무너진다). 이 비율은 rf가
+// 상쇄돼 질량과 무관하게 성립한다.
+const FRAGMENT_SPACING_FACTOR = 2.5; // 파편 간격 = 이 값 × 파편 반지름 (방사 방향, >2.0 필수)
 const FRAGMENT_VEL_SPREAD = 0.6; // 오프셋 단위당 방사 속도 추가분(스트림 신장)
 
 /**

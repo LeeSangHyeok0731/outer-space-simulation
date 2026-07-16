@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BodyBuffer } from './bodies';
+import { resolveCollisions } from './collisions';
 import { EventBuffer, EventKind } from './events';
 import { resolveTidalDisruption } from './tidal';
 import { BodyType, iscoRadius, radiusFromMass, tidalRadius, TIDAL_FRAGMENTS } from './units';
@@ -27,6 +28,21 @@ describe('resolveTidalDisruption', () => {
     expect(debris).toBe(TIDAL_FRAGMENTS);
     // 블랙홀 1 + 파편 N (원래 천체는 제거됨)
     expect(b.count).toBe(1 + TIDAL_FRAGMENTS);
+  });
+
+  it('파편이 스폰 직후 같은 서브스텝에서 즉시 재병합되지 않는다', () => {
+    const b = makeScene();
+    // r_t(≈44.7) 안이면서, 파편 스트림 전체가 ISCO(≈28.8) 밖에 머물도록 넉넉히 배치.
+    b.add({ x: 40, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 20, radius: radiusFromMass(20), type: BodyType.NORMAL });
+
+    resolveTidalDisruption(b);
+    // 파괴 바로 뒤에 오는 흡수/병합 판정. 파편 간격이 포획 거리(반지름 합)를 넘어야
+    // 인접 파편이 겹쳐 즉시 뭉치지 않는다(스파게티화 스트림 유지).
+    resolveCollisions(b);
+
+    let debris = 0;
+    for (let i = 0; i < b.count; i++) if (b.type[i] === BodyType.DEBRIS) debris++;
+    expect(debris).toBe(TIDAL_FRAGMENTS);
   });
 
   it('질량과 운동량을 보존한다', () => {
