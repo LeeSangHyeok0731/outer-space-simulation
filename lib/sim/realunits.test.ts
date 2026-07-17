@@ -57,6 +57,12 @@ describe('formatMass', () => {
   it('음수 질량도 절댓값으로 처리한다', () => {
     expect(formatMass(-2000)).toBe('1.0 태양질량');
   });
+
+  it('사다리 상단 경계 반올림이 상위 구간을 넘겨도 자릿수가 깨지지 않는다', () => {
+    // 99.97 목성질량은 "100.0"이 아니라 "100 목성질량"으로 승격돼야 한다.
+    const nearHundredJupiter = (99.97 * JUPITER_MASS_KG) / MASS_SCALE_KG;
+    expect(formatMass(nearHundredJupiter)).toBe('100 목성질량');
+  });
 });
 
 describe('formatLength', () => {
@@ -96,6 +102,11 @@ describe('formatSpeed', () => {
 
   it('느린 천체는 km/s로 표시된다', () => {
     expect(formatSpeed(0.05)).toContain('km/s');
+  });
+
+  it('광속 % 반올림이 10을 넘기면 정수로 표시한다', () => {
+    // pct 9.95 → "10.0%"가 아니라 "10%".
+    expect(formatSpeed(0.0995 * C)).toBe('광속의 10%');
   });
 });
 

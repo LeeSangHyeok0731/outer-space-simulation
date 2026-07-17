@@ -23,10 +23,14 @@ export const LENGTH_SCALE_KM = SOLAR_RADIUS_KM / STAR_RADIUS_SIM; // ≈89,060 k
 export const SPEED_SCALE_KMS = LIGHT_SPEED_KMS / C; // ≈11,992 km/s / 시뮬속력 1
 export const TIME_SCALE_S = LENGTH_SCALE_KM / SPEED_SCALE_KMS; // ≈7.43 s / 시뮬시간 1
 
-/** 질량 유효숫자: ≥100 정수, 1~100 소수1자리, <1 소수2자리(설계 문서 §3 해석). */
+/** 질량 유효숫자: ≥100 정수, 1~100 소수1자리, <1 소수2자리. 반올림이 상위 구간을
+ *  넘기면(예: 99.97 → 100.0) 상위 구간 규칙으로 승격해 "100.0" 같은 표기를 막는다. */
 function formatSig(v: number): string {
-  if (v >= 100) return v.toFixed(0);
-  if (v >= 1) return v.toFixed(1);
+  if (v >= 1) {
+    if (Math.round(v * 10) / 10 >= 100) return v.toFixed(0);
+    return v.toFixed(1);
+  }
+  if (Math.round(v * 100) / 100 >= 1) return v.toFixed(1);
   return v.toFixed(2);
 }
 
@@ -60,7 +64,8 @@ export function formatSpeed(simSpeed: number): string {
   const frac = Math.abs(simSpeed) / C;
   if (frac >= 0.01) {
     const pct = frac * 100;
-    return `광속의 ${pct >= 10 ? pct.toFixed(0) : pct.toFixed(1)}%`;
+    const promoted = Math.round(pct * 10) / 10 >= 10;
+    return `광속의 ${promoted ? pct.toFixed(0) : pct.toFixed(1)}%`;
   }
   const kms = Math.abs(simSpeed) * SPEED_SCALE_KMS;
   return `${Math.round(kms).toLocaleString('en-US')} km/s`;
