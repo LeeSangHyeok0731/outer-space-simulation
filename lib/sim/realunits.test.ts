@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { C, radiusFromMass } from './units';
 import {
-  AU_KM,
-  EARTH_MASS_KG,
   formatLength,
   formatMass,
   formatSpeed,
