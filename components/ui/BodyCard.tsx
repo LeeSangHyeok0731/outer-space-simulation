@@ -11,6 +11,7 @@ import {
   schwarzschildRadius,
   timeDilationAt,
 } from '@/lib/sim/units';
+import { formatLength, formatMass, formatSpeed, formatTime } from '@/lib/sim/realunits';
 
 interface Info {
   mass: number;
@@ -26,21 +27,6 @@ interface Info {
  * 표시한다. 멀어서 밍밍한 "0.998×"로 카드를 어지럽히지 않는다.
  */
 const TIME_DILATION_NOTICEABLE = 0.99;
-
-/**
- * 호킹 증발까지 남은 시뮬레이션 시간. dM/dt = -K/M² 를 적분하면 t = M³ / (3K).
- * 질량이 조금만 커져도 어마어마해지므로 사람이 읽을 수 있는 단위로 접는다.
- */
-function formatEvaporation(mass: number): string {
-  const seconds = (mass * mass * mass) / (3 * HAWKING_K);
-  if (seconds < 60) return `${seconds.toFixed(1)}초`;
-  if (seconds < 3600) return `${(seconds / 60).toFixed(1)}분`;
-  if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}시간`;
-  if (seconds < 86400 * 365) return `${(seconds / 86400).toFixed(1)}일`;
-  const years = seconds / (86400 * 365);
-  if (years > 1e6) return '사실상 영원';
-  return `${years.toFixed(0)}년`;
-}
 
 export default function BodyCard() {
   const { engine, selectedId, setSelectedId } = useSimulation();
@@ -113,29 +99,29 @@ export default function BodyCard() {
       <dl className="space-y-1 font-mono text-xs text-sky-100/80">
         <div className="flex justify-between">
           <dt className="text-slate-400">질량</dt>
-          <dd>{info.mass.toFixed(2)}</dd>
+          <dd>{formatMass(info.mass)}</dd>
         </div>
         <div className="flex justify-between">
           <dt className="text-slate-400">반지름</dt>
-          <dd>{info.radius.toFixed(2)}</dd>
+          <dd>{formatLength(info.radius)}</dd>
         </div>
         <div className="flex justify-between">
           <dt className="text-slate-400">속력</dt>
-          <dd>{info.speed.toFixed(2)}</dd>
+          <dd>{formatSpeed(info.speed)}</dd>
         </div>
         {info.blackHole && (
           <>
             <div className="flex justify-between">
               <dt className="text-slate-400">사건의 지평선</dt>
-              <dd>{schwarzschildRadius(info.mass).toFixed(2)}</dd>
+              <dd>{formatLength(schwarzschildRadius(info.mass))}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-amber-300/70">흡수 반경 (ISCO)</dt>
-              <dd className="text-amber-200">{iscoRadius(info.mass).toFixed(2)}</dd>
+              <dd className="text-amber-200">{formatLength(iscoRadius(info.mass))}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-slate-400">증발까지</dt>
-              <dd>{formatEvaporation(info.mass)}</dd>
+              <dd>{formatTime((info.mass * info.mass * info.mass) / (3 * HAWKING_K))}</dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt className="text-slate-400">시간 지연</dt>
@@ -160,7 +146,7 @@ export default function BodyCard() {
       </dl>
 
       <label className="mt-3 mb-1 block font-mono text-xs text-sky-200/70">
-        질량 {info.mass.toFixed(1)}
+        질량 {formatMass(info.mass)}
         {!info.blackHole && info.mass >= COLLAPSE_MASS * 0.9 && (
           <span className="ml-2 text-amber-300">붕괴 임박</span>
         )}

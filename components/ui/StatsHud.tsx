@@ -2,6 +2,7 @@
 
 import { useSimulation } from '@/state/SimulationProvider';
 import { MAX_BODIES } from '@/lib/sim/units';
+import { formatTime } from '@/lib/sim/realunits';
 
 export default function StatsHud() {
   const { stats } = useSimulation();
@@ -16,7 +17,7 @@ export default function StatsHud() {
           </span>
         </span>
         <span>
-          경과 <span className="text-sky-300">{stats.simTime.toFixed(1)}</span>s
+          경과 <span className="text-sky-300">{formatTime(stats.simTime)}</span>
         </span>
         <span>
           FPS <span className="text-sky-300">{stats.fps}</span>
