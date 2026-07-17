@@ -1,6 +1,7 @@
 'use client';
 
 import { BODY_PRESETS, type PresetKey } from '@/lib/sim/units';
+import { formatMass } from '@/lib/sim/realunits';
 import { SCATTER_MAX, SCATTER_MIN, useSimulation } from '@/state/SimulationProvider';
 
 const PRESET_KEYS: PresetKey[] = ['asteroid', 'planet', 'star'];
@@ -36,13 +37,16 @@ export default function SpawnPanel() {
                 : 'bg-sky-500/10 text-sky-200/70 hover:bg-sky-500/25'
             }`}
           >
-            {BODY_PRESETS[k].label}
+            <div>{BODY_PRESETS[k].label}</div>
+            <div className="mt-0.5 font-mono text-[10px] leading-tight opacity-70">
+              {formatMass(BODY_PRESETS[k].mass)}
+            </div>
           </button>
         ))}
       </div>
 
       <label className="mb-1 block font-mono text-xs text-sky-200/70">
-        질량 {spawnMass.toFixed(1)}
+        질량 {formatMass(spawnMass)}
       </label>
       <input
         type="range"
