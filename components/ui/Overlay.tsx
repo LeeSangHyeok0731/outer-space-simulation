@@ -2,6 +2,7 @@
 
 import BodyCard from './BodyCard';
 import ControlPanel from './ControlPanel';
+import ScenePanel from './ScenePanel';
 import SpawnPanel from './SpawnPanel';
 import StatsHud from './StatsHud';
 
@@ -9,8 +10,9 @@ export default function Overlay() {
   return (
     // 컨테이너는 클릭을 통과시킨다. 패널만 pointer-events-auto로 되돌린다.
     <div className="pointer-events-none absolute inset-0 z-10 p-4">
-      <div className="absolute top-4 left-4">
+      <div className="absolute top-4 left-4 flex flex-col gap-3">
         <StatsHud />
+        <ScenePanel />
       </div>
 
       <div className="absolute top-4 right-4 flex flex-col gap-3">
