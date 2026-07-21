@@ -1,5 +1,5 @@
 import type { SimulationEngine } from './engine';
-import { BODY_PRESETS, BodyType, G } from './units';
+import { BODY_PRESETS, G } from './units';
 
 /** 중심 질량 M 주위 반지름 r에서 XZ 평면 원궤도를 도는 속도 */
 function circularVelocity(M: number, r: number): [number, number, number] {

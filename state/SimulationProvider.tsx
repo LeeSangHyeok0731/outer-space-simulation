@@ -14,8 +14,15 @@ import {
 import type * as THREE from 'three';
 import { SimulationEngine } from '@/lib/sim/engine';
 import { scatterChaotic, scatterOrbital } from '@/lib/sim/scatter';
-import { createStarterSystem } from '@/lib/sim/scenes';
+import { applyPreset, createStarterSystem } from '@/lib/sim/scenes';
 import { BODY_PRESETS, type PresetKey } from '@/lib/sim/units';
+import {
+  listSaves,
+  saveToSlot,
+  deleteSave,
+  parseAndValidate,
+  type SaveSlot,
+} from '@/lib/saves';
 
 export interface SimStats {
   count: number;
@@ -51,6 +58,13 @@ export interface SimulationContextValue {
   setScatterCount: (v: number) => void;
   /** 현재 프리셋 질량으로 scatterCount개를 한 번에 뿌린다. */
   scatter: (mode: ScatterMode) => void;
+  saves: SaveSlot[];
+  refreshSaves: () => void;
+  applyScenePreset: (key: string) => void;
+  saveCurrent: (name: string) => void;
+  loadSave: (id: string) => void;
+  removeSave: (id: string) => void;
+  importState: (text: string) => { ok: true } | { ok: false; error: string };
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
@@ -74,6 +88,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [stats, setStats] = useState<SimStats>({ count: 0, simTime: 0, fps: 0 });
   const [scatterCount, setScatterCountState] = useState(50);
+  const [saves, setSaves] = useState<SaveSlot[]>([]);
 
   useEffect(() => {
     createStarterSystem(engine);
@@ -128,6 +143,54 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     [engine, preset, scatterCount, spawnMass],
   );
 
+  // saves 목록은 이벤트 핸들러에서만 갱신한다(마운트 이펙트에서 setState 금지 규칙 회피).
+  // 패널을 펼칠 때·저장/삭제할 때 이 함수로 localStorage를 다시 읽는다.
+  const refreshSaves = useCallback(() => {
+    setSaves(listSaves(localStorage));
+  }, []);
+
+  const applyScenePreset = useCallback(
+    (key: string) => {
+      applyPreset(engine, key, Math.random);
+      setSelectedId(null); // load/preset은 id를 무효화한다
+    },
+    [engine],
+  );
+
+  const saveCurrent = useCallback(
+    (name: string) => {
+      saveToSlot(localStorage, name, engine.serialize());
+      setSaves(listSaves(localStorage));
+    },
+    [engine],
+  );
+
+  const loadSave = useCallback(
+    (id: string) => {
+      const slot = listSaves(localStorage).find((s) => s.id === id);
+      if (!slot) return;
+      engine.load(slot.state);
+      setSelectedId(null);
+    },
+    [engine],
+  );
+
+  const removeSave = useCallback((id: string) => {
+    deleteSave(localStorage, id);
+    setSaves(listSaves(localStorage));
+  }, []);
+
+  const importState = useCallback(
+    (text: string): { ok: true } | { ok: false; error: string } => {
+      const result = parseAndValidate(text);
+      if ('error' in result) return { ok: false, error: result.error };
+      engine.load(result);
+      setSelectedId(null);
+      return { ok: true };
+    },
+    [engine],
+  );
+
   const value = useMemo<SimulationContextValue>(
     () => ({
       engine,
@@ -150,11 +213,19 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       scatterCount,
       setScatterCount,
       scatter,
+      saves,
+      refreshSaves,
+      applyScenePreset,
+      saveCurrent,
+      loadSave,
+      removeSave,
+      importState,
     }),
     [
       engine, paused, setPaused, timeScale, setTimeScale, spawnMass,
       preset, setPreset, showTrails, selectedId, stats, resetScene,
       scatterCount, setScatterCount, scatter,
+      saves, refreshSaves, applyScenePreset, saveCurrent, loadSave, removeSave, importState,
     ],
   );
 
