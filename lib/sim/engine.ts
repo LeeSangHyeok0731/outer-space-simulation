@@ -12,8 +12,15 @@ export const FIXED_DT = 1 / 120;
 /** 탭 복귀 등으로 dt가 튈 때 잘라내는 상한. 이걸 안 하면 시뮬레이션이 폭발한다. */
 export const MAX_FRAME_DT = 0.05;
 
-/** 프레임당 물리 스텝 상한. 초과분은 버린다(죽음의 나선 방지). */
-export const MAX_SUBSTEPS = 32;
+/**
+ * 프레임당 물리 스텝 상한. 초과분은 버린다(죽음의 나선 방지).
+ *
+ * 이 값이 프레임당 전진 가능한 시뮬 시간의 천장을 정한다: `MAX_SUBSTEPS · FIXED_DT`.
+ * 배속을 올려도 이 천장을 넘는 시간은 버려지므로, 실제 최고 배속은 이 상한이 좌우한다.
+ * 128 · (1/120) ≈ 1.07초/프레임 → 60fps에서 약 64× 배속까지 실제로 소화한다.
+ * 천체가 많은 씬(수백 개)에서 고배속은 프레임당 물리 비용이 그만큼 커진다(설계 문서 §4).
+ */
+export const MAX_SUBSTEPS = 128;
 
 export interface SpawnOptions {
   position: [number, number, number];
