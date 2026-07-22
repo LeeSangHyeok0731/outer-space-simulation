@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { SimulationEngine, MAX_FRAME_DT } from './engine';
-import { createStarterSystem } from './scenes';
+import { createStarterSystem, SCENE_PRESETS, applyPreset } from './scenes';
+import { BodyType } from './units';
 
 describe('createStarterSystem', () => {
   it('항성 1 + 행성 3 + 소행성 60 = 64개 천체를 만든다', () => {
@@ -53,4 +54,75 @@ describe('createStarterSystem', () => {
     // 64개 천체를 60 시뮬레이션-초만큼 굴린다. 한가한 머신에서는 ~330ms지만 부하가
     // 걸리면 기본 5초 제한을 넘겨 실패한 적이 있다. 느려서 나는 빨간불은 회귀 신호를 가린다.
   }, 30_000);
+});
+
+const RNG = () => 0.5; // 결정론적 난수
+
+describe('SCENE_PRESETS', () => {
+  it('solar/binary/blackhole/collision 4종을 이 순서로 노출한다', () => {
+    expect(SCENE_PRESETS.map((p) => p.key)).toEqual([
+      'solar',
+      'binary',
+      'blackhole',
+      'collision',
+    ]);
+  });
+
+  it('모든 프리셋은 유한한 천체만 만든다 (NaN/Infinity 없음)', () => {
+    for (const preset of SCENE_PRESETS) {
+      const engine = new SimulationEngine();
+      preset.build(engine, RNG);
+      const b = engine.bodies;
+      expect(b.count).toBeGreaterThan(0);
+      for (let i = 0; i < b.count; i++) {
+        for (const arr of [b.posX, b.posY, b.posZ, b.velX, b.velY, b.velZ, b.mass, b.radius]) {
+          expect(Number.isFinite(arr[i])).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('기대하는 천체 수를 만든다', () => {
+    const counts: Record<string, number> = {
+      solar: 64,
+      binary: 4,
+      blackhole: 33,
+      collision: 6,
+    };
+    for (const preset of SCENE_PRESETS) {
+      const engine = new SimulationEngine();
+      preset.build(engine, RNG);
+      expect(engine.bodies.count).toBe(counts[preset.key]);
+    }
+  });
+
+  it('blackhole 프리셋은 블랙홀을 정확히 1개 만든다', () => {
+    const engine = new SimulationEngine();
+    applyPreset(engine, 'blackhole', RNG);
+    const b = engine.bodies;
+    let holes = 0;
+    for (let i = 0; i < b.count; i++) if (b.type[i] === BodyType.BLACK_HOLE) holes++;
+    expect(holes).toBe(1);
+  });
+
+  it('collision 프리셋은 시작 시 블랙홀이 없다', () => {
+    const engine = new SimulationEngine();
+    applyPreset(engine, 'collision', RNG);
+    const b = engine.bodies;
+    for (let i = 0; i < b.count; i++) expect(b.type[i]).not.toBe(BodyType.BLACK_HOLE);
+  });
+
+  it('applyPreset는 없는 key를 안전하게 무시한다', () => {
+    const engine = new SimulationEngine();
+    applyPreset(engine, 'nope', RNG);
+    expect(engine.bodies.count).toBe(0);
+  });
+
+  it('createStarterSystem은 solar 프리셋과 같은 천체 수를 낸다', () => {
+    const a = new SimulationEngine();
+    createStarterSystem(a);
+    const bEng = new SimulationEngine();
+    applyPreset(bEng, 'solar', RNG);
+    expect(a.bodies.count).toBe(bEng.bodies.count);
+  });
 });
