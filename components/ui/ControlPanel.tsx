@@ -2,7 +2,7 @@
 
 import { useSimulation } from '@/state/SimulationProvider';
 
-const SPEEDS = [0.25, 1, 4, 16];
+const SPEEDS = [0.25, 1, 4, 16, 64];
 
 export default function ControlPanel() {
   const { paused, setPaused, timeScale, setTimeScale, resetScene } = useSimulation();

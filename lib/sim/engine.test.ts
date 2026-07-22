@@ -39,6 +39,19 @@ describe('SimulationEngine', () => {
     expect(e.simTime).toBeLessThanOrEqual(MAX_SUBSTEPS * FIXED_DT + 1e-9);
   });
 
+  it('60fps 프레임에서 64× 배속이 서브스텝 상한에 막히지 않고 온전히 흐른다', () => {
+    // MAX_SUBSTEPS가 128 미만으로 낮아지면 64×는 이 천장에 막혀 실제로 64×가 안 난다.
+    // 이 테스트가 그 회귀를 잡는다. 한 프레임(1/60초)에 64× = 64/60초의 시뮬 시간이
+    // 흘러야 하고, 그것이 프레임당 천장(MAX_SUBSTEPS·FIXED_DT) 이내여야 한다.
+    const realDt = 1 / 60;
+    const e = new SimulationEngine();
+    e.timeScale = 64;
+    e.step(realDt);
+    // 64× × (1/60) = 서브스텝 128개 × FIXED_DT. 서브스텝 정수화 오차만큼 여유를 둔다.
+    expect(e.simTime).toBeCloseTo(64 * realDt, 5);
+    expect(64 * realDt).toBeLessThanOrEqual(MAX_SUBSTEPS * FIXED_DT + 1e-9);
+  });
+
   it('용량이 가득 차면 spawn이 -1을 반환한다', () => {
     const e = new SimulationEngine();
     for (let i = 0; i < MAX_BODIES; i++) spawn(e, i * 100);
