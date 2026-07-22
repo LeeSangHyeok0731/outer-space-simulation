@@ -1,11 +1,13 @@
 /**
  * 시뮬레이션이 씬에 알리는 일회성 사건의 종류.
- * 확장 가능한 enum이다 — 이후 ISCO 흡수 플레어·자동 붕괴 섬광이 여기 붙는다.
+ * 확장 가능한 enum이다 — 이후 자동 붕괴 섬광 등이 여기 붙는다.
  */
 export const EventKind = {
   EVAPORATION: 0,
   MERGE: 1,
   TIDAL: 2,
+  /** 블랙홀이 일반 천체를 ISCO 안으로 삼킴. 제트 플레어가 이걸 듣는다. */
+  ISCO_ABSORB: 3,
 } as const;
 
 export type EventKindValue = (typeof EventKind)[keyof typeof EventKind];
