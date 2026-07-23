@@ -44,7 +44,8 @@ describe('BodyBuffer', () => {
       mass: 77, radius: 88,
       type: 5,
       color: [0.1, 0.2, 0.3],
-      pinned: true
+      pinned: true,
+      spin: 0.7,
     }));
     b.accX[1] = 99;
     b.accY[1] = 111;
@@ -67,6 +68,15 @@ describe('BodyBuffer', () => {
     expect(b.colG[0]).toBeCloseTo(0.2);
     expect(b.colB[0]).toBeCloseTo(0.3);
     expect(b.pinned[0]).toBe(1);
+    expect(b.spin[0]).toBeCloseTo(0.7);
+  });
+
+  it('spin은 기본 0이고, 준 값이 저장된다', () => {
+    const b = new BodyBuffer(4);
+    b.add(make());
+    b.add(make({ spin: -0.5 }));
+    expect(b.spin[0]).toBe(0);
+    expect(b.spin[1]).toBeCloseTo(-0.5);
   });
 
   it('indexOfId는 swap-remove 후에도 올바른 위치를 찾는다', () => {

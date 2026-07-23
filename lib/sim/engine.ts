@@ -138,6 +138,23 @@ export class SimulationEngine {
     return i !== -1 && isBlackHoleAt(this.bodies, i);
   }
 
+  /**
+   * 커 스핀 a*를 설정한다. [−1, 1]로 클램프한다. 블랙홀만 물리적으로 반응하지만
+   * (프레임 끌림·스핀 의존 ISCO), 저장은 타입과 무관하다. 질량·위치가 안 바뀌므로
+   * 가속도는 그대로 유효하다 — 단, 프레임 끌림은 매 스텝 velocity로 다시 계산되므로
+   * accDirty를 세울 필요가 없다.
+   */
+  setSpin(id: number, aStar: number): void {
+    const i = this.bodies.indexOfId(id);
+    if (i === -1) return;
+    this.bodies.spin[i] = Math.max(-1, Math.min(1, aStar));
+  }
+
+  spinOf(id: number): number {
+    const i = this.bodies.indexOfId(id);
+    return i === -1 ? 0 : this.bodies.spin[i];
+  }
+
   /** 4단계(우주선 추력)용. 추력 F를 dt 동안 준 효과는 dv = F/m·dt 다. */
   applyImpulse(id: number, dvx: number, dvy: number, dvz: number): void {
     const i = this.bodies.indexOfId(id);
@@ -263,6 +280,7 @@ export class SimulationEngine {
         type: b.type[i],
         color: [b.colR[i], b.colG[i], b.colB[i]],
         pinned: b.pinned[i] === 1,
+        spin: b.spin[i],
       });
     }
     return { simTime: this.simTime, bodies };

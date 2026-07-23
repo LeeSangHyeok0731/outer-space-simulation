@@ -21,6 +21,8 @@ function isValidBody(b: unknown): b is SerializedBody {
   if (![o.x, o.y, o.z, o.vx, o.vy, o.vz, o.mass, o.radius].every(isFiniteNumber)) return false;
   if (typeof o.type !== 'number' || !VALID_TYPES.has(o.type)) return false;
   if (!Array.isArray(o.color) || o.color.length !== 3 || !o.color.every(isFiniteNumber)) return false;
+  // spin은 선택 필드다. 옛 세이브엔 없고(0으로 로드), 있으면 유한 수여야 한다.
+  if (o.spin !== undefined && !isFiniteNumber(o.spin)) return false;
   return true;
 }
 
