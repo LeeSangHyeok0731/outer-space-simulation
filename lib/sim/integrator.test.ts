@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { BodyBuffer } from './bodies';
 import { computeAccelerations, integrate } from './integrator';
-import { G } from './units';
+import { BodyType, G } from './units';
 
 /** 무거운 중심 천체 + 무시할 만큼 가벼운 위성. 위성은 XZ 평면에서 원궤도를 돈다. */
 function circularPair(centralMass: number, r: number) {
@@ -36,6 +36,53 @@ describe('computeAccelerations', () => {
     expect(Number.isFinite(b.accX[0])).toBe(true);
     expect(Number.isFinite(b.accY[0])).toBe(true);
     expect(Number.isFinite(b.accZ[0])).toBe(true);
+  });
+});
+
+describe('프레임 끌림 (커 스핀)', () => {
+  it('스핀 0이면 접선 힘이 없다 (기존 궤도 불변)', () => {
+    const b = new BodyBuffer(2);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 5000, radius: 1, type: BodyType.BLACK_HOLE });
+    // 안쪽으로 낙하 중인 천체(−x 속도). 중력은 −x, 접선(z)은 0이어야 한다.
+    b.add({ x: 40, y: 0, z: 0, vx: -5, vy: 0, vz: 0, mass: 1, radius: 0.3 });
+    computeAccelerations(b);
+    expect(b.accZ[1]).toBe(0);
+    expect(b.accX[1]).toBeLessThan(0); // 중력은 그대로
+  });
+
+  it('스핀이 있으면 낙하하는 천체에 접선 가속도(감김)가 붙는다', () => {
+    const b = new BodyBuffer(2);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 5000, radius: 1, type: BodyType.BLACK_HOLE, spin: 1 });
+    b.add({ x: 40, y: 0, z: 0, vx: -5, vy: 0, vz: 0, mass: 1, radius: 0.3 });
+    computeAccelerations(b);
+    // v=(-5,0,0), B_g=+Y → a += v×B = (0,0, v_x·By) = (0,0,-5·By), By>0 → accZ<0
+    expect(b.accZ[1]).toBeLessThan(0);
+    expect(b.accZ[1]).not.toBe(0);
+  });
+
+  it('스핀 방향을 뒤집으면 감김도 뒤집힌다', () => {
+    const b = new BodyBuffer(2);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 5000, radius: 1, type: BodyType.BLACK_HOLE, spin: -1 });
+    b.add({ x: 40, y: 0, z: 0, vx: -5, vy: 0, vz: 0, mass: 1, radius: 0.3 });
+    computeAccelerations(b);
+    expect(b.accZ[1]).toBeGreaterThan(0);
+  });
+
+  it('스핀 블랙홀 주위를 오래 돌아도 폭주하지 않는다 (v×B는 일을 안 한다)', () => {
+    const M = 5000;
+    const r = 90; // ISCO(48) 밖
+    const b = new BodyBuffer(2);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: M, radius: 1, type: BodyType.BLACK_HOLE, spin: 1 });
+    const v = Math.sqrt((G * M) / r);
+    b.add({ x: r, y: 0, z: 0, vx: 0, vy: 0, vz: v, mass: 1e-3, radius: 0.3 });
+    computeAccelerations(b);
+
+    for (let s = 0; s < 3000; s++) integrate(b, 1 / 120);
+
+    const dist = Math.hypot(b.posX[1] - b.posX[0], b.posY[1] - b.posY[0], b.posZ[1] - b.posZ[0]);
+    expect(Number.isFinite(dist)).toBe(true);
+    expect(dist).toBeGreaterThan(5); // 안 빨려들고
+    expect(dist).toBeLessThan(500); // 안 튕겨 나간다 (유계)
   });
 });
 

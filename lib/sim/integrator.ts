@@ -1,5 +1,5 @@
 import type { BodyBuffer } from './bodies';
-import { G, SOFTENING } from './units';
+import { BodyType, FRAME_DRAG_K, G, schwarzschildRadius, SOFTENING } from './units';
 
 /**
  * 모든 쌍의 중력 가속도를 직접 계산한다 (O(N²)).
@@ -42,6 +42,50 @@ export function computeAccelerations(b: BodyBuffer): void {
       b.accX[j] -= dx * sj;
       b.accY[j] -= dy * sj;
       b.accZ[j] -= dz * sj;
+    }
+  }
+
+  applyFrameDragging(b);
+}
+
+/**
+ * 프레임 끌림 (중력자기). 스핀하는 블랙홀 근처 물질에 `a += v × B_g`를 더한다.
+ * `B_g`는 스핀축(±Y) 방향, 크기 ∝ `a*·r_s³/(r³ + r_s³)`(렌즈-티링 ω ∝ J/r³, 중심 근처는
+ * `r_s³`로 상한). 이 힘은 속도에 수직이라 **일을 하지 않는다 → 에너지 주입 없음 → 안정적**
+ * (자기력과 같은 성질). 단순 접선 힘은 궤도를 부풀려 폭발 위험이 있어 쓰지 않는다.
+ *
+ * 스핀 블랙홀이 하나도 없으면 안쪽 루프를 아예 돌지 않아 비용이 0이다. 블랙홀은 몇 개뿐이라
+ * O(N_bh × N)이고, 프레임당 O(N²)인 중력에 비하면 무시할 수준이다.
+ *
+ * 립프로그는 원래 위치 의존 힘을 가정하는데 이 항은 속도 의존이다. 프레임 끌림은 작고
+ * 국소적이라 심플렉틱성의 미세한 손상은 무시한다(장난감 근사, 설계 문서 §4). 폭주는
+ * engine의 sanitize()가 최후 방어한다.
+ */
+function applyFrameDragging(b: BodyBuffer): void {
+  const n = b.count;
+  for (let k = 0; k < n; k++) {
+    if (b.type[k] !== BodyType.BLACK_HOLE) continue;
+    const spin = b.spin[k];
+    if (spin === 0) continue;
+
+    const rs = schwarzschildRadius(b.mass[k]);
+    const rs3 = rs * rs * rs;
+    const coef = FRAME_DRAG_K * spin * rs3;
+    const xk = b.posX[k];
+    const yk = b.posY[k];
+    const zk = b.posZ[k];
+
+    for (let i = 0; i < n; i++) {
+      if (i === k) continue;
+      const dx = b.posX[i] - xk;
+      const dy = b.posY[i] - yk;
+      const dz = b.posZ[i] - zk;
+      const r2 = dx * dx + dy * dy + dz * dz;
+      const By = coef / (r2 * Math.sqrt(r2) + rs3); // B_g의 Y성분: r³ + r_s³로 상한
+
+      // a += v × (0, By, 0) = (−v_z·By, 0, v_x·By) — 스핀축(Y) 둘레로 감긴다.
+      b.accX[i] += -b.velZ[i] * By;
+      b.accZ[i] += b.velX[i] * By;
     }
   }
 }

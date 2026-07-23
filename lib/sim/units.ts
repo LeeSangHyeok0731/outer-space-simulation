@@ -130,6 +130,14 @@ export function mergeKickSpeed(m1: number, m2: number): number {
   return KICK_STRENGTH * scale;
 }
 
+/**
+ * 프레임 끌림(렌즈-티링) 세기. 스핀 블랙홀 근처 물질이 중력자기 힘 `a = v × B_g`로
+ * 스핀 방향으로 감긴다. `B_g = ±Y · FRAME_DRAG_K · a* · r_s³/(r³ + r_s³)`.
+ * 속도에 수직이라 일을 하지 않아(에너지 주입 없음) 안정적이다. 클수록 강하게 감긴다 —
+ * 조정 대상(설계 문서 §4). r³로 급감쇠해 먼 천체는 무영향.
+ */
+export const FRAME_DRAG_K = 2;
+
 /** 광자 구 반지름의 r_s 배수. 이 반지름에서 빛은 블랙홀을 궤도로 돈다. */
 export const PHOTON_SPHERE_FACTOR = 1.5;
 
