@@ -1,6 +1,6 @@
 import type { BodyBuffer } from './bodies';
 import { EventKind, type EventBuffer } from './events';
-import { BodyType, iscoRadius, mergeKickSpeed, schwarzschildRadius } from './units';
+import { BodyType, C, iscoRadius, mergeKickSpeed, schwarzschildRadius } from './units';
 
 /**
  * 두 천체가 합쳐지는 거리.
@@ -87,6 +87,24 @@ function mergeInto(b: BodyBuffer, i: number, j: number, events?: EventBuffer): v
     vz = 0;
   }
 
+  // 커 스핀: 결과가 블랙홀이면 잔여 스핀을 정한다. 원본 위치·속도가 아직 살아 있을 때
+  // (아래에서 덮어쓰기 전) 계산해 둔다. 궤도 각운동량 L_y(COM 기준) + 입력 블랙홀의
+  // 기존 스핀 각운동량(J = a*·M²/C, a* = Jc/GM² 역산)을 합쳐 a* = J·C/M²로 되돌린다.
+  let newSpin = 0;
+  if (anyBH) {
+    const cx = (m1 * b.posX[i] + m2 * b.posX[j]) * inv;
+    const cz = (m1 * b.posZ[i] + m2 * b.posZ[j]) * inv;
+    const cvx = (m1 * b.velX[i] + m2 * b.velX[j]) * inv;
+    const cvz = (m1 * b.velZ[i] + m2 * b.velZ[j]) * inv;
+    // (r × v)_y = r_z·v_x − r_x·v_z, 각 천체의 COM 기준 궤도 각운동량
+    let J =
+      m1 * ((b.posZ[i] - cz) * (b.velX[i] - cvx) - (b.posX[i] - cx) * (b.velZ[i] - cvz)) +
+      m2 * ((b.posZ[j] - cz) * (b.velX[j] - cvx) - (b.posX[j] - cx) * (b.velZ[j] - cvz));
+    if (iBH) J += (b.spin[i] * m1 * m1) / C;
+    if (jBH) J += (b.spin[j] * m2 * m2) / C;
+    newSpin = Math.max(-1, Math.min(1, (J * C) / (m * m)));
+  }
+
   const r1 = b.radius[i];
   const r2 = b.radius[j];
   const radius = Math.cbrt(r1 * r1 * r1 + r2 * r2 * r2);
@@ -119,6 +137,7 @@ function mergeInto(b: BodyBuffer, i: number, j: number, events?: EventBuffer): v
   b.velY[i] = vy;
   b.velZ[i] = vz;
   b.pinned[i] = anyPinned ? 1 : 0;
+  if (anyBH) b.spin[i] = newSpin;
 
   // 블랙홀 쌍성 병합은 잔물결(MERGE), 블랙홀이 일반 천체를 삼키면 흡수 플레어(ISCO_ABSORB).
   // 둘 다 위치는 잔여 블랙홀 자리(pinned면 닻), payload는 잔여 질량. 씬이 각각 다른 시각효과

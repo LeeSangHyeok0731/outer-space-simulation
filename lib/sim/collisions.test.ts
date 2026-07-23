@@ -365,3 +365,47 @@ describe('블랙홀 병합 킥과 MERGE 이벤트', () => {
     expect(b.velZ[0]).toBeCloseTo(momentumVz, 10); // 킥 없음(운동량대로)
   });
 });
+
+describe('병합에서 커 스핀 자연 발생', () => {
+  it('빙글빙글 도는 블랙홀 쌍성 병합은 부호 있는 스핀을 낳는다', () => {
+    const b = new BodyBuffer(4);
+    // (±15,0,0)에서 ±z로 도는 두 블랙홀 — 궤도 각운동량이 크다. d=30 < ISCO(4000)=38.4
+    b.add({ x: 15, y: 0, z: 0, vx: 0, vy: 0, vz: 10, mass: 4000, radius: 1 });
+    b.add({ x: -15, y: 0, z: 0, vx: 0, vy: 0, vz: -10, mass: 4000, radius: 1 });
+    collapseAt(b, 0);
+    collapseAt(b, 1);
+
+    resolveCollisions(b);
+
+    expect(b.count).toBe(1);
+    // L_y = Σ m(rz·vx − rx·vz) = 두 항 모두 음수 → a* < 0. 크기는 유의미(|a*|~0.47).
+    expect(b.spin[0]).toBeLessThan(-0.1);
+    expect(b.spin[0]).toBeGreaterThanOrEqual(-1); // 극단적 커 한계
+  });
+
+  it('정면(각운동량 0) 병합은 스핀이 거의 0이다', () => {
+    const b = new BodyBuffer(4);
+    // 서로를 향해 정면으로 — 궤도 각운동량이 0
+    b.add({ x: 15, y: 0, z: 0, vx: -8, vy: 0, vz: 0, mass: 4000, radius: 1 });
+    b.add({ x: -15, y: 0, z: 0, vx: 8, vy: 0, vz: 0, mass: 4000, radius: 1 });
+    collapseAt(b, 0);
+    collapseAt(b, 1);
+
+    resolveCollisions(b);
+
+    expect(b.count).toBe(1);
+    expect(Math.abs(b.spin[0])).toBeLessThan(1e-9);
+  });
+
+  it('반대로 도는 쌍성은 반대 부호 스핀을 낳는다', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 15, y: 0, z: 0, vx: 0, vy: 0, vz: -10, mass: 4000, radius: 1 });
+    b.add({ x: -15, y: 0, z: 0, vx: 0, vy: 0, vz: 10, mass: 4000, radius: 1 });
+    collapseAt(b, 0);
+    collapseAt(b, 1);
+
+    resolveCollisions(b);
+
+    expect(b.spin[0]).toBeGreaterThan(0.1);
+  });
+});
