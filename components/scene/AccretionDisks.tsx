@@ -3,7 +3,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { BodyType, iscoRadiusKerr } from '@/lib/sim/units';
+import { BodyType, iscoRadius } from '@/lib/sim/units';
 import { useSimulation } from '@/state/SimulationProvider';
 
 /**
@@ -91,8 +91,7 @@ export default function AccretionDisks() {
       mesh.position.set(bx, by, bz);
       // RingGeometry는 XY 평면에 눕는다. 황도면(XZ)으로 돌린다.
       mesh.rotation.set(-Math.PI / 2, 0, 0);
-      // 안쪽 테두리 = ISCO. 스핀할수록 prograde ISCO로 좁아진다(원반이 조여든다).
-      mesh.scale.setScalar(iscoRadiusKerr(b.mass[i], Math.abs(b.spin[i])));
+      mesh.scale.setScalar(iscoRadius(b.mass[i]));
 
       // 시선 방향 ŝ: 블랙홀 중심 → 카메라. 원반 반지름 ≪ 카메라 거리라 원반당 하나로 근사.
       sHat.set(camPos.x - bx, camPos.y - by, camPos.z - bz).normalize();

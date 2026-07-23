@@ -44,50 +44,6 @@ export function computeAccelerations(b: BodyBuffer): void {
       b.accZ[j] -= dz * sj;
     }
   }
-
-  applyFrameDragging(b);
-}
-
-/**
- * 프레임 끌림 (중력자기). 스핀하는 블랙홀 근처 물질에 `a += v × B_g`를 더한다.
- * `B_g`는 스핀축(±Y) 방향, 크기 ∝ `a*·r_s³/(r³ + r_s³)`(렌즈-티링 ω ∝ J/r³, 중심 근처는
- * `r_s³`로 상한). 이 힘은 속도에 수직이라 **일을 하지 않는다 → 에너지 주입 없음 → 안정적**
- * (자기력과 같은 성질). 단순 접선 힘은 궤도를 부풀려 폭발 위험이 있어 쓰지 않는다.
- *
- * 스핀 블랙홀이 하나도 없으면 안쪽 루프를 아예 돌지 않아 비용이 0이다. 블랙홀은 몇 개뿐이라
- * O(N_bh × N)이고, 프레임당 O(N²)인 중력에 비하면 무시할 수준이다.
- *
- * 립프로그는 원래 위치 의존 힘을 가정하는데 이 항은 속도 의존이다. 프레임 끌림은 작고
- * 국소적이라 심플렉틱성의 미세한 손상은 무시한다(장난감 근사, 설계 문서 §4). 폭주는
- * engine의 sanitize()가 최후 방어한다.
- */
-function applyFrameDragging(b: BodyBuffer): void {
-  const n = b.count;
-  for (let k = 0; k < n; k++) {
-    if (b.type[k] !== BodyType.BLACK_HOLE) continue;
-    const spin = b.spin[k];
-    if (spin === 0) continue;
-
-    const rs = schwarzschildRadius(b.mass[k]);
-    const rs3 = rs * rs * rs;
-    const coef = FRAME_DRAG_K * spin * rs3;
-    const xk = b.posX[k];
-    const yk = b.posY[k];
-    const zk = b.posZ[k];
-
-    for (let i = 0; i < n; i++) {
-      if (i === k) continue;
-      const dx = b.posX[i] - xk;
-      const dy = b.posY[i] - yk;
-      const dz = b.posZ[i] - zk;
-      const r2 = dx * dx + dy * dy + dz * dz;
-      const By = coef / (r2 * Math.sqrt(r2) + rs3); // B_g의 Y성분: r³ + r_s³로 상한
-
-      // a += v × (0, By, 0) = (−v_z·By, 0, v_x·By) — 스핀축(Y) 둘레로 감긴다.
-      b.accX[i] += -b.velZ[i] * By;
-      b.accZ[i] += b.velX[i] * By;
-    }
-  }
 }
 
 /**
@@ -139,5 +95,52 @@ export function integrate(b: BodyBuffer, dt: number): void {
     b.velX[i] += b.accX[i] * half;
     b.velY[i] += b.accY[i] * half;
     b.velZ[i] += b.accZ[i] * half;
+  }
+
+  applyFrameDragging(b, dt);
+}
+
+/**
+ * 프레임 끌림 (렌즈-티링). 스핀하는 블랙홀 근처 물질의 속도를 스핀축(±Y) 둘레로 조금씩
+ * 회전시킨다 — 각속도 `ω = FRAME_DRAG_K · a* · r_s³/(r³ + r_s³)`(중심 근처는 r_s³로 상한),
+ * 스텝당 각도 `θ = ω·dt`.
+ *
+ * **왜 힘(v×B)이 아니라 속도 회전인가:** 순수 회전은 `|v|`를 정확히 보존한다 → 운동
+ * 에너지가 안 변하고 위치도 안 옮기므로 역학적 에너지 주입이 **0**이다. 힘(가속도) 형태의
+ * v×B는 이산 립프로그에서 매 스텝 `|v|`를 미세하게 키워 에너지를 펌핑했다(궤도가 폭주해
+ * 천체가 튕겨 나가거나 ISCO 안으로 밀려 흡수됐다). 회전 방식은 그 불안정을 원리적으로 없앤다.
+ *
+ * 스핀 블랙홀이 하나도 없으면 안쪽 루프를 아예 돌지 않아 비용이 0이다.
+ */
+function applyFrameDragging(b: BodyBuffer, dt: number): void {
+  const n = b.count;
+  for (let k = 0; k < n; k++) {
+    if (b.type[k] !== BodyType.BLACK_HOLE) continue;
+    const spin = b.spin[k];
+    if (spin === 0) continue;
+
+    const rs = schwarzschildRadius(b.mass[k]);
+    const rs3 = rs * rs * rs;
+    const rate = FRAME_DRAG_K * spin * rs3;
+    const xk = b.posX[k];
+    const yk = b.posY[k];
+    const zk = b.posZ[k];
+
+    for (let i = 0; i < n; i++) {
+      if (i === k || b.pinned[i]) continue;
+      const dx = b.posX[i] - xk;
+      const dy = b.posY[i] - yk;
+      const dz = b.posZ[i] - zk;
+      const r2 = dx * dx + dy * dy + dz * dz;
+      const theta = (rate / (r2 * Math.sqrt(r2) + rs3)) * dt;
+
+      // 속도의 XZ 성분을 스핀축(Y) 둘레로 θ만큼 회전. |v| 보존 → 에너지 주입 없음.
+      const c = Math.cos(theta);
+      const s = Math.sin(theta);
+      const vx = b.velX[i];
+      const vz = b.velZ[i];
+      b.velX[i] = vx * c - vz * s;
+      b.velZ[i] = vx * s + vz * c;
+    }
   }
 }
