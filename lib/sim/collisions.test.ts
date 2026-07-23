@@ -346,7 +346,7 @@ describe('블랙홀 병합 킥과 MERGE 이벤트', () => {
     expect(events.x[0]).toBeCloseTo(1.5, 6); // 질량중심(같은 질량이라 중간)
   });
 
-  it('블랙홀이 일반 천체를 삼킬 때는 킥도 MERGE 이벤트도 없다', () => {
+  it('블랙홀이 일반 천체를 삼킬 때는 킥·MERGE 없이 ISCO_ABSORB 하나를 방출한다', () => {
     const events = new EventBuffer(8);
     const b = new BodyBuffer(4);
     b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 5000, radius: 1 });
@@ -357,7 +357,11 @@ describe('블랙홀 병합 킥과 MERGE 이벤트', () => {
 
     resolveCollisions(b, events);
 
-    expect(events.count).toBe(0); // MERGE 이벤트 없음
+    // MERGE(블랙홀 쌍성)가 아니라 흡수 알림 하나만. 제트 플레어가 이걸 듣는다.
+    expect(events.count).toBe(1);
+    expect(events.kind[0]).toBe(EventKind.ISCO_ABSORB);
+    expect(events.payload[0]).toBeCloseTo(5001, 6); // 잔여 질량
+    expect(events.x[0]).toBeCloseTo(b.posX[0], 6); // 잔여 블랙홀 중심
     expect(b.velZ[0]).toBeCloseTo(momentumVz, 10); // 킥 없음(운동량대로)
   });
 });

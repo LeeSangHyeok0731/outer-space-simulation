@@ -7,6 +7,7 @@ import Bodies from './Bodies';
 import CameraRig from './CameraRig';
 import EffectsController from './EffectsController';
 import GravitationalLensing from './GravitationalLensing';
+import Jets from './Jets';
 import PhotonSpheres from './PhotonSpheres';
 import PinMarkers from './PinMarkers';
 import SpawnController from './SpawnController';
@@ -32,6 +33,7 @@ export default function SpaceCanvas() {
       <Trails />
       <PinMarkers />
       <AccretionDisks />
+      <Jets />
       <PhotonSpheres />
       <EffectsController />
       <CameraRig />

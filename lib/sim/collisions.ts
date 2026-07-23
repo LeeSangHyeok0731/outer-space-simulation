@@ -120,11 +120,13 @@ function mergeInto(b: BodyBuffer, i: number, j: number, events?: EventBuffer): v
   b.velZ[i] = vz;
   b.pinned[i] = anyPinned ? 1 : 0;
 
-  // 블랙홀 쌍성 병합만 잔물결 이벤트를 낸다. 블랙홀이 일반 천체를 삼키는 것은
-  // (이후의 ISCO 흡수 플레어로) 별도로 다룬다. 위치는 잔여 블랙홀 자리(pinned면 닻),
-  // payload는 잔여 질량(잔물결 크기).
+  // 블랙홀 쌍성 병합은 잔물결(MERGE), 블랙홀이 일반 천체를 삼키면 흡수 플레어(ISCO_ABSORB).
+  // 둘 다 위치는 잔여 블랙홀 자리(pinned면 닻), payload는 잔여 질량. 씬이 각각 다른 시각효과
+  // (중력파 링 / 극 제트 플레어)로 반응한다.
   if (bothBH) {
     events?.push(EventKind.MERGE, px, py, pz, m);
+  } else if (anyBH) {
+    events?.push(EventKind.ISCO_ABSORB, px, py, pz, m);
   }
 }
 
