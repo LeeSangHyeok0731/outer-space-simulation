@@ -1,6 +1,6 @@
 import type { BodyBuffer } from './bodies';
 import { EventKind, type EventBuffer } from './events';
-import { BodyType, C, iscoRadius, mergeKickSpeed, schwarzschildRadius } from './units';
+import { BodyType, C, iscoRadiusKerr, mergeKickSpeed, schwarzschildRadius } from './units';
 
 /**
  * 두 천체가 합쳐지는 거리.
@@ -16,10 +16,20 @@ function captureDistance(b: BodyBuffer, i: number, j: number): number {
 
   if (!iBH && !jBH) return b.radius[i] + b.radius[j];
 
-  // 블랙홀이 둘이면 더 큰 ISCO가 이긴다.
+  // 커 흡수: 상대 궤도 각운동량의 방향(부호)이 블랙홀 스핀과 같으면(prograde) ISCO가
+  // 좁아져 더 가까이 살아남고, 반대면(retrograde) 넓어져 더 멀리서 잡힌다. (r × v)_y의
+  // 부호로 j가 i를 도는 방향을 알아낸다. 스핀 0이면 iscoRadiusKerr가 3 r_s로 수렴한다.
+  const rx = b.posX[j] - b.posX[i];
+  const rz = b.posZ[j] - b.posZ[i];
+  const vrx = b.velX[j] - b.velX[i];
+  const vrz = b.velZ[j] - b.velZ[i];
+  const orbitSense = Math.sign(rz * vrx - rx * vrz); // j가 i 주위를 도는 방향
+
+  // 블랙홀이 둘이면 각자의 Kerr ISCO 중 더 큰 값이 이긴다.
   let d = 0;
-  if (iBH) d = Math.max(d, iscoRadius(b.mass[i]));
-  if (jBH) d = Math.max(d, iscoRadius(b.mass[j]));
+  if (iBH) d = Math.max(d, iscoRadiusKerr(b.mass[i], b.spin[i] * orbitSense));
+  // i가 j를 도는 방향은 반대 부호다.
+  if (jBH) d = Math.max(d, iscoRadiusKerr(b.mass[j], b.spin[j] * -orbitSense));
   return d;
 }
 

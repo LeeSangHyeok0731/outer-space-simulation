@@ -366,6 +366,44 @@ describe('블랙홀 병합 킥과 MERGE 이벤트', () => {
   });
 });
 
+describe('스핀 의존 ISCO 흡수', () => {
+  // M=5000 → r_s=16, 슈바르츠실트 ISCO=48. a*=1이면 prograde ISCO=8, retrograde=72.
+  it('같이 도는(prograde) 천체는 슈바르츠실트 ISCO 안이어도 살아남는다', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 5000, radius: 1 });
+    collapseAt(b, 0);
+    b.spin[0] = 1; // 최대 스핀
+
+    // r=30: 슈바르츠실트 ISCO(48) 안이지만 prograde ISCO(8) 밖. −z로 돌아 spin과 같은 방향.
+    b.add({ x: 30, y: 0, z: 0, vx: 0, vy: 0, vz: -6, mass: 1, radius: 0.3 });
+
+    expect(resolveCollisions(b)).toBe(false);
+    expect(b.count).toBe(2); // 안 삼켜진다
+  });
+
+  it('거스르는(retrograde) 천체는 슈바르츠실트 ISCO 밖이어도 잡아먹힌다', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 5000, radius: 1 });
+    collapseAt(b, 0);
+    b.spin[0] = 1;
+
+    // r=60: 슈바르츠실트 ISCO(48) 밖이지만 retrograde ISCO(72) 안. +z로 돌아 spin과 반대.
+    b.add({ x: 60, y: 0, z: 0, vx: 0, vy: 0, vz: 6, mass: 1, radius: 0.3 });
+
+    expect(resolveCollisions(b)).toBe(true);
+    expect(b.count).toBe(1); // 삼켜진다
+  });
+
+  it('스핀 0이면 방향과 무관하게 슈바르츠실트 ISCO를 쓴다', () => {
+    const b = new BodyBuffer(4);
+    b.add({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, mass: 5000, radius: 1 });
+    collapseAt(b, 0); // spin 0
+    // r=60은 ISCO(48) 밖 → 안 삼켜진다(회전 방향과 무관)
+    b.add({ x: 60, y: 0, z: 0, vx: 0, vy: 0, vz: 6, mass: 1, radius: 0.3 });
+    expect(resolveCollisions(b)).toBe(false);
+  });
+});
+
 describe('병합에서 커 스핀 자연 발생', () => {
   it('빙글빙글 도는 블랙홀 쌍성 병합은 부호 있는 스핀을 낳는다', () => {
     const b = new BodyBuffer(4);
