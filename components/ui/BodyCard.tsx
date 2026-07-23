@@ -20,6 +20,7 @@ interface Info {
   pinned: boolean;
   blackHole: boolean;
   dilation: number | null;
+  spin: number;
 }
 
 /**
@@ -71,6 +72,7 @@ export default function BodyCard() {
         pinned: b.pinned[i] === 1,
         blackHole: b.type[i] === BodyType.BLACK_HOLE,
         dilation,
+        spin: b.spin[i],
       });
     };
 
@@ -164,6 +166,30 @@ export default function BodyCard() {
         }}
         className="mb-2 w-full accent-sky-400"
       />
+
+      {info.blackHole && (
+        <>
+          <label className="mt-1 mb-1 block font-mono text-xs text-violet-200/70">
+            스핀 a* {info.spin.toFixed(2)}
+            <span className="ml-2 text-slate-500">
+              {info.spin > 0.02 ? '↻ 정회전' : info.spin < -0.02 ? '↺ 역회전' : '정지'}
+            </span>
+          </label>
+          <input
+            type="range"
+            min={-1}
+            max={1}
+            step={0.01}
+            value={info.spin}
+            onChange={(e) => {
+              const s = Number(e.target.value);
+              engine.setSpin(selectedId, s);
+              setInfo({ ...info, spin: s }); // 100ms 폴링을 기다리지 않고 즉시 반영한다
+            }}
+            className="mb-2 w-full accent-violet-400"
+          />
+        </>
+      )}
 
       <button
         type="button"
