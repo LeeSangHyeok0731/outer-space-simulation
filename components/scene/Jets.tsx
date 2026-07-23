@@ -14,8 +14,11 @@ const MAX_JET_BHS = 24;
 const JET_LENGTH = 5;
 const JET_WIDTH = 0.45;
 
-/** 평상시 제트 밝기. 흡수하면 flare가 얹혀 확 밝아진다. */
-const BASE_INTENSITY = 0.2;
+/** 평상시 제트 밝기. 흡수하면 flare가, 스핀하면 스핀 게인이 얹힌다. */
+const BASE_INTENSITY = 0.15;
+/** 스핀 연동. 빠르게 도는 블랙홀일수록 제트가 세진다(블랜포드-즈나젝의 정성적 반영). */
+const JET_SPIN_GAIN = 0.6;
+const JET_SPIN_LENGTH = 0.6;
 /** 흡수 한 번당 flare 증가량과 상한. */
 const FLARE_BUMP = 0.8;
 const FLARE_MAX = 1.3;
@@ -104,9 +107,10 @@ export default function Jets() {
       bh++;
 
       const isco = iscoRadius(b.mass[i]);
+      const spinMag = Math.abs(b.spin[i]);
       const flare = f.get(b.id[i]) ?? 0;
-      const intensity = BASE_INTENSITY + flare;
-      const length = isco * JET_LENGTH * (1 + flare * FLARE_LENGTH);
+      const intensity = BASE_INTENSITY + JET_SPIN_GAIN * spinMag + flare;
+      const length = isco * JET_LENGTH * (1 + JET_SPIN_LENGTH * spinMag + flare * FLARE_LENGTH);
       const width = isco * JET_WIDTH;
 
       color.setRGB(BASE_R * intensity, BASE_G * intensity, BASE_B * intensity);

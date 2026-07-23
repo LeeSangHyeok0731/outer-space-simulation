@@ -6,6 +6,7 @@ import AccretionDisks from './AccretionDisks';
 import Bodies from './Bodies';
 import CameraRig from './CameraRig';
 import EffectsController from './EffectsController';
+import Ergospheres from './Ergospheres';
 import GravitationalLensing from './GravitationalLensing';
 import Jets from './Jets';
 import PhotonSpheres from './PhotonSpheres';
@@ -34,6 +35,7 @@ export default function SpaceCanvas() {
       <PinMarkers />
       <AccretionDisks />
       <Jets />
+      <Ergospheres />
       <PhotonSpheres />
       <EffectsController />
       <CameraRig />

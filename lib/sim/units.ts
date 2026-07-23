@@ -87,6 +87,23 @@ export function iscoRadius(mass: number): number {
 }
 
 /**
+ * 커(회전) 블랙홀의 ISCO 반지름. 회전 방향에 따라 다르다.
+ *
+ * `aEff`는 **천체 기준 유효 스핀**이다: 천체가 블랙홀과 같은 방향으로 돌면 `+|a*|`
+ * (prograde — 흡수 반경이 좁아져 더 가까이 살아남는다), 거스르면 `−|a*|`
+ * (retrograde — 넓어져 더 멀리서 잡아먹힌다).
+ *
+ * 정성적으로 실제 커 ISCO를 따른다: 슈바르츠실트(a*=0)에서 3 r_s, prograde 극단에서
+ * ~0.5 r_s(실제 1 r_g = 0.5 r_s), retrograde 극단에서 ~4.5 r_s(실제 9 r_g = 4.5 r_s).
+ * 정확한 바딘 공식 대신 이 세 앵커를 잇는 단조 보간을 쓴다(설계 문서 §5).
+ */
+export function iscoRadiusKerr(mass: number, aEff: number): number {
+  const a = Math.max(-1, Math.min(1, aEff));
+  const factor = a >= 0 ? 3 - 2.5 * a : 3 - 1.5 * a;
+  return factor * schwarzschildRadius(mass);
+}
+
+/**
  * 병합 킥의 세기. 클수록 잔여 블랙홀이 세게 튄다.
  *
  * 조정 가능한 숫자다(설계 문서 §7). 너무 크면 병합 잔여 블랙홀이 화면 밖으로 날아가고,
@@ -112,6 +129,14 @@ export function mergeKickSpeed(m1: number, m2: number): number {
   const scale = (q * q * (1 - q)) / Math.pow(1 + q, 5);
   return KICK_STRENGTH * scale;
 }
+
+/**
+ * 프레임 끌림(렌즈-티링) 세기. 스핀 블랙홀 근처 물질이 중력자기 힘 `a = v × B_g`로
+ * 스핀 방향으로 감긴다. `B_g = ±Y · FRAME_DRAG_K · a* · r_s³/(r³ + r_s³)`.
+ * 속도에 수직이라 일을 하지 않아(에너지 주입 없음) 안정적이다. 클수록 강하게 감긴다 —
+ * 조정 대상(설계 문서 §4). r³로 급감쇠해 먼 천체는 무영향.
+ */
+export const FRAME_DRAG_K = 2;
 
 /** 광자 구 반지름의 r_s 배수. 이 반지름에서 빛은 블랙홀을 궤도로 돈다. */
 export const PHOTON_SPHERE_FACTOR = 1.5;

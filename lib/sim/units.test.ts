@@ -5,6 +5,7 @@ import {
   COLLAPSE_MASS,
   DENSITY,
   iscoRadius,
+  iscoRadiusKerr,
   KICK_STRENGTH,
   lensDeflection,
   mergeKickSpeed,
@@ -53,6 +54,28 @@ describe('블랙홀 공식', () => {
     for (const m of [1, 100, 3000, 50000]) {
       expect(iscoRadius(m)).toBeCloseTo(3 * schwarzschildRadius(m), 10);
     }
+  });
+
+  it('Kerr ISCO: a*=0이면 슈바르츠실트 ISCO(3 r_s)와 같다', () => {
+    for (const m of [100, 3000, 50000]) {
+      expect(iscoRadiusKerr(m, 0)).toBeCloseTo(iscoRadius(m), 10);
+    }
+  });
+
+  it('Kerr ISCO: 같이 도는(prograde) 극단이면 0.5 r_s로 좁아진다', () => {
+    const m = 3000;
+    expect(iscoRadiusKerr(m, 1)).toBeCloseTo(0.5 * schwarzschildRadius(m), 10);
+  });
+
+  it('Kerr ISCO: 거스르는(retrograde) 극단이면 4.5 r_s로 넓어진다', () => {
+    const m = 3000;
+    expect(iscoRadiusKerr(m, -1)).toBeCloseTo(4.5 * schwarzschildRadius(m), 10);
+  });
+
+  it('Kerr ISCO: aEff가 커질수록(prograde) 단조 감소한다', () => {
+    const m = 3000;
+    const vals = [-1, -0.5, 0, 0.5, 1].map((a) => iscoRadiusKerr(m, a));
+    for (let i = 1; i < vals.length; i++) expect(vals[i]).toBeLessThan(vals[i - 1]);
   });
 
   it('블랙홀 반지름에는 MIN_RADIUS 하한을 걸지 않는다', () => {

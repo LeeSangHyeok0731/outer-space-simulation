@@ -284,6 +284,21 @@ describe('SimulationEngine 블랙홀', () => {
     expect(e2.bodies.radius[0]).toBeCloseTo(schwarzschildRadius(5000), 10);
   });
 
+  it('setSpin은 [−1, 1]로 클램프하고 serialize → load 왕복에서 보존된다', () => {
+    const e = new SimulationEngine();
+    const id = e.spawn({ position: [0, 0, 0], velocity: [0, 0, 0], mass: 5000 });
+    e.collapseToBlackHole(id);
+
+    e.setSpin(id, 2.5); // 상한 초과 → 1로 클램프
+    expect(e.spinOf(id)).toBe(1);
+    e.setSpin(id, -0.6);
+    expect(e.spinOf(id)).toBeCloseTo(-0.6);
+
+    const e2 = new SimulationEngine();
+    e2.load(e.serialize());
+    expect(e2.bodies.spin[0]).toBeCloseTo(-0.6);
+  });
+
   it('블랙홀이 있어도 결정론이 유지된다', () => {
     const build = () => {
       const e = new SimulationEngine();
