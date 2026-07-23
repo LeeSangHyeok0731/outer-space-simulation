@@ -87,6 +87,23 @@ export function iscoRadius(mass: number): number {
 }
 
 /**
+ * 커(회전) 블랙홀의 ISCO 반지름. 회전 방향에 따라 다르다.
+ *
+ * `aEff`는 **천체 기준 유효 스핀**이다: 천체가 블랙홀과 같은 방향으로 돌면 `+|a*|`
+ * (prograde — 흡수 반경이 좁아져 더 가까이 살아남는다), 거스르면 `−|a*|`
+ * (retrograde — 넓어져 더 멀리서 잡아먹힌다).
+ *
+ * 정성적으로 실제 커 ISCO를 따른다: 슈바르츠실트(a*=0)에서 3 r_s, prograde 극단에서
+ * ~0.5 r_s(실제 1 r_g = 0.5 r_s), retrograde 극단에서 ~4.5 r_s(실제 9 r_g = 4.5 r_s).
+ * 정확한 바딘 공식 대신 이 세 앵커를 잇는 단조 보간을 쓴다(설계 문서 §5).
+ */
+export function iscoRadiusKerr(mass: number, aEff: number): number {
+  const a = Math.max(-1, Math.min(1, aEff));
+  const factor = a >= 0 ? 3 - 2.5 * a : 3 - 1.5 * a;
+  return factor * schwarzschildRadius(mass);
+}
+
+/**
  * 병합 킥의 세기. 클수록 잔여 블랙홀이 세게 튄다.
  *
  * 조정 가능한 숫자다(설계 문서 §7). 너무 크면 병합 잔여 블랙홀이 화면 밖으로 날아가고,
